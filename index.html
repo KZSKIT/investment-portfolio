@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MY PORTFOLIO | 資産管理ダッシュボード</title>
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -51,18 +52,18 @@
         
         .market-board {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             flex-wrap: wrap;
         }
         .market-item {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 6px 14px;
+            padding: 6px 12px;
             border-radius: 6px;
             font-size: 12px;
             color: #cbd5e1;
         }
-        .market-item strong { color: #ffffff; font-size: 14px; margin-left: 4px; }
+        .market-item strong { color: #ffffff; font-size: 13px; margin-left: 4px; }
 
         /* メインレイアウト */
         .container {
@@ -151,16 +152,18 @@
 <header>
     <div class="header-container">
         <h1>MY PORTFOLIO</h1>
+        <!-- マーケット指標 -->
         <div class="market-board">
-            <div class="market-item">USD/JPY <strong id="mkt-usdjpy">---</strong></div>
-            <div class="market-item">BTC/JPY <strong id="mkt-btcjpy">---</strong></div>
-            <div class="market-item">GOLD (円/g) <strong id="mkt-gold">---</strong></div>
-            <div class="market-item">S&P 500 <strong id="mkt-sp500">---</strong></div>
+            <div class="market-item">USD/JPY <strong id="mkt-usdjpy">取得中...</strong></div>
+            <div class="market-item">BTC/JPY <strong id="mkt-btcjpy">取得中...</strong></div>
+            <div class="market-item">GOLD (円/g) <strong id="mkt-gold">取得中...</strong></div>
+            <div class="market-item">S&P 500 <strong id="mkt-sp500">取得中...</strong></div>
         </div>
     </div>
 </header>
 
 <div class="container">
+    <!-- 上段：資産推移グラフ -->
     <div class="card">
         <h2>資産推移（ヒストリカルデータ）</h2>
         <div class="trend-box">
@@ -168,6 +171,7 @@
         </div>
     </div>
 
+    <!-- 下段：データ入力とアロケーション -->
     <div class="grid-two">
         <div class="card">
             <h2>資産データの入力・確認</h2>
@@ -215,6 +219,7 @@
             </div>
         </div>
 
+        <!-- 右側：アロケーション円グラフ -->
         <div class="card">
             <h2>アセットアロケーション</h2>
             <div class="chart-box">
@@ -232,10 +237,9 @@
     const keys = ['bank', 'stock', 'crypto', 'dc'];
     let allocChart = null;
     let trendChart = null;
-    let historyData = []; // [{date: '2026-01', bank: 100, stock: 200...}]
+    let historyData = [];
 
     window.onload = function() {
-        // デフォルトの年月（今月）をセット
         const now = new Date();
         document.getElementById('history-date').value = now.toISOString().substring(0, 7);
 
@@ -245,41 +249,47 @@
         updateDashboard();
     };
 
-    // 公開API（Yahoo Finance等から取得できるpublicプロキシ）を利用したレート取得
+    // 【修正版】外部に開かれた安定API群から個別に取得する関数
     async function fetchMarketRates() {
+        // 1. USD/JPY (ExchangeRate-API)
         try {
-            // 米ドル円, BTC円, 金スポット(米ドル/オンス), S&P500を取得
-            const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/JPY=X');
-            const btcRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/BTC-JPY');
-            const gldRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F');
-            const spRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/^GSPC');
+            const resUsd = await fetch('https://open.er-api.com/v6/latest/USD');
+            if (resUsd.ok) {
+                const dataUsd = await resUsd.json();
+                document.getElementById('mkt-usdjpy').innerText = '¥' + dataUsd.rates.JPY.toFixed(2);
+            }
+        } catch(e) { console.error(e); document.getElementById('mkt-usdjpy').innerText = 'エラー'; }
 
-            if(res.ok) {
-                const json = await res.json();
-                const rate = json.chart.result[0].meta.regularMarketPrice;
-                document.getElementById('mkt-usdjpy').innerText = '¥' + rate.toFixed(2);
-                
-                // 金価格の計算（ドル建て1オンスあたりから、日本円の1gあたりに換算。1オンス=31.1035g）
-                if(gldRes.ok) {
-                    const gldJson = await gldRes.json();
-                    const gldDol = gldJson.chart.result[0].meta.regularMarketPrice;
-                    const gldJpyGram = (gldDol * rate) / 31.1035;
-                    document.getElementById('mkt-gold').innerText = '¥' + Math.round(gldJpyGram).toLocaleString();
-                }
+        // 2. BTC/JPY (CoinGecko API)
+        try {
+            const resBtc = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=jpy');
+            if (resBtc.ok) {
+                const dataBtc = await resBtc.json();
+                document.getElementById('mkt-btcjpy').innerText = '¥' + dataBtc.bitcoin.jpy.toLocaleString();
             }
-            if(btcRes.ok) {
-                const json = await btcRes.json();
-                document.getElementById('mkt-btcjpy').innerText = '¥' + Math.round(json.chart.result[0].meta.regularMarketPrice).toLocaleString();
+        } catch(e) { console.error(e); document.getElementById('mkt-btcjpy').innerText = 'エラー'; }
+
+        // 3. GOLD 日本円/g (CoinGecko PAXG連動ハック: 1oz=31.1035g)
+        try {
+            const resGold = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=jpy');
+            if (resGold.ok) {
+                const dataGold = await resGold.json();
+                const gramPrice = dataGold['pax-gold'].jpy / 31.1035;
+                document.getElementById('mkt-gold').innerText = '¥' + Math.round(gramPrice).toLocaleString();
             }
-            if(spRes.ok) {
-                const json = await spRes.json();
-                document.getElementById('mkt-sp500').innerText = json.chart.result[0].meta.regularMarketPrice.toLocaleString();
+        } catch(e) { console.error(e); document.getElementById('mkt-gold').innerText = 'エラー'; }
+
+        // 4. S&P 500 (Yahoo Finance via AllOrigins Proxy)
+        try {
+            const spUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^GSPC');
+            const resSp = await fetch(`https://api.allorigins.win/get?url=${spUrl}`);
+            if (resSp.ok) {
+                const proxyData = await resSp.json();
+                const spJson = JSON.parse(proxyData.contents);
+                const spPrice = spJson.chart.result[0].meta.regularMarketPrice;
+                document.getElementById('mkt-sp500').innerText = spPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
             }
-        } catch(e) {
-            console.log("レート取得エラー: ", e);
-            // オフラインやエラー時のフォールバック表記
-            document.getElementById('mkt-usdjpy').innerText = '取得エラー';
-        }
+        } catch(e) { console.error(e); document.getElementById('mkt-sp500').innerText = 'エラー'; }
     }
 
     function setupInputListeners() {
@@ -306,11 +316,8 @@
             document.getElementById(`val-${key}`).value = parseFloat(savedVal).toLocaleString();
             document.getElementById(`cost-${key}`).value = parseFloat(savedCost).toLocaleString();
         });
-        // 履歴のロード
         const savedHistory = localStorage.getItem('assets_history_data');
-        if (savedHistory) {
-            historyData = JSON.parse(savedHistory);
-        }
+        if (savedHistory) { historyData = JSON.parse(savedHistory); }
     }
 
     function saveData() {
@@ -319,15 +326,13 @@
             localStorage.setItem(`assets_${key}_cost`, getNumericValue(`cost-${key}`));
         });
         updateDashboard();
-        alert('現在のデータをローカルに保存しました。');
+        alert('現在のデータを保存しました。');
     }
 
-    // 新機能：現在の入力値を指定の年月のヒストリカルデータとして蓄積
     function saveCurrentToHistory() {
         const dateStr = document.getElementById('history-date').value;
-        if(!dateStr) return alert('年月を正しく選択してください。');
+        if(!dateStr) return alert('年月を選択してください。');
 
-        // 同一年月があれば上書き、なければ新規追加
         const existingIdx = historyData.findIndex(item => item.date === dateStr);
         const currentSnap = {
             date: dateStr,
@@ -337,22 +342,17 @@
             dc: getNumericValue('val-dc')
         };
 
-        if(existingIdx >= 0) {
-            historyData[existingIdx] = currentSnap;
-        } else {
-            historyData.push(currentSnap);
-        }
+        if(existingIdx >= 0) { historyData[existingIdx] = currentSnap; } 
+        else { historyData.push(currentSnap); }
 
-        // 年月順に並び替え
         historyData.sort((a, b) => a.date.localeCompare(b.date));
-        
         localStorage.setItem('assets_history_data', JSON.stringify(historyData));
         updateDashboard();
-        alert(`${dateStr} のデータを推移グラフに記録しました。`);
+        alert(`${dateStr} のデータを記録しました。`);
     }
 
     function clearHistory() {
-        if(confirm('これまでに蓄積した資産推移の履歴データをすべて削除しますか？（現在の入力値は消えません）')) {
+        if(confirm('蓄積した資産推移のデータをすべて削除しますか？')) {
             historyData = [];
             localStorage.removeItem('assets_history_data');
             updateDashboard();
@@ -367,18 +367,14 @@
         keys.forEach(key => {
             const val = getNumericValue(`val-${key}`);
             const cost = getNumericValue(`cost-${key}`);
-            totalVal += val;
-            totalCost += cost;
-            chartData.push(val);
+            totalVal += val; totalCost += cost; chartData.push(val);
 
             const retEl = document.getElementById(`ret-${key}`);
             if (cost > 0) {
                 const roi = ((val - cost) / cost) * 100;
                 retEl.innerText = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
                 retEl.style.color = roi >= 0 ? 'var(--danger)' : 'var(--success)';
-            } else {
-                retEl.innerText = '0%'; retEl.style.color = 'inherit';
-            }
+            } else { retEl.innerText = '0%'; retEl.style.color = 'inherit'; }
         });
 
         document.getElementById('total-val').innerText = totalVal.toLocaleString();
@@ -390,15 +386,12 @@
             const totalRoi = ((totalVal - totalCost) / totalCost) * 100;
             totalRetEl.innerText = (totalRoi >= 0 ? '+' : '') + totalRoi.toFixed(1) + '%';
             totalRetEl.style.color = totalRoi >= 0 ? 'var(--danger)' : 'var(--success)';
-        } else {
-            totalRetEl.innerText = '0%'; totalRetEl.style.color = 'inherit';
-        }
+        } else { totalRetEl.innerText = '0%'; totalRetEl.style.color = 'inherit'; }
 
         renderCharts(chartData);
     }
 
     function renderCharts(allocData) {
-        // 1. アロケーションドーナツ
         const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
         if (allocChart) { allocChart.destroy(); }
         const isAllZero = allocData.every(v => v === 0);
@@ -413,46 +406,35 @@
                     borderWidth: 2
                 }]
             },
-            options: {
-                responsive: true, maintainAspectRatio: false, cutout: '75%',
-                plugins: { legend: { display: false } }
-            }
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
         });
 
-        // 2. 資産推移（積み上げ棒グラフ）
         const ctxTrend = document.getElementById('trendChart').getContext('2d');
         if (trendChart) { trendChart.destroy(); }
 
-        // 履歴データがない場合のダミー初期表示
-        const labels = historyData.length > 0 ? historyData.map(d => d.date) : ['データなし'];
+        const labels = historyData.length > 0 ? historyData.map(d => d.date) : ['記録なし'];
         const datasets = [
             { label: '銀行口座', data: historyData.map(d => d.bank), backgroundColor: '#38bdf8' },
             { label: '証券口座', data: historyData.map(d => d.stock), backgroundColor: '#3b82f6' },
             { label: '仮想通貨', data: historyData.map(d => d.crypto), backgroundColor: '#f59e0b' },
             { label: 'DC口座', data: historyData.map(d => d.dc), backgroundColor: '#a855f7' }
         ];
-        if(historyData.length === 0) {
-            datasets.forEach(ds => ds.data = [0]);
-        }
+        if(historyData.length === 0) { datasets.forEach(ds => ds.data = [0]); }
 
         trendChart = new Chart(ctxTrend, {
             type: 'bar',
             data: { labels: labels, datasets: datasets },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 scales: {
                     x: { stacked: true },
                     y: { stacked: true, ticks: { callback: value => '¥' + (value / 10000).toLocaleString() + '万' } }
                 },
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
+                plugins: { legend: { position: 'bottom' } }
             }
         });
     }
 
-    // 一括エクスポート／インポート（推移データも含む仕様に強化）
     function exportData() {
         const exportObj = { history: historyData, current: {} };
         keys.forEach(key => {
@@ -481,9 +463,7 @@
                         if(data.current[`cost_${key}`] !== undefined) localStorage.setItem(`assets_${key}_cost`, data.current[`cost_${key}`]);
                     });
                 }
-                loadData();
-                updateDashboard();
-                document.getElementById('backupText').value = '';
+                loadData(); updateDashboard(); document.getElementById('backupText').value = '';
                 alert('すべてのデータを復元しました！');
             } catch (e) { alert('無効なコードです。'); }
         }
