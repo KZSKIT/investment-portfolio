@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>資産管理ダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --primary-color: #3498db;
+            --border-color: #dddddd;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        header {
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+        h1, h2 { margin: 0 0 10px 0; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        @media(min-width: 768px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 300px;
+            width: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            text-align: right;
+        }
+        th { background-color: #edf2f7; text-align: center; }
+        td.category { text-align: left; font-weight: bold; }
+        input[type="number"] {
+            width: 100px;
+            padding: 5px;
+            text-align: right;
+        }
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        .btn:hover { background-color: #2980b9; }
+        .alert-info {
+            background-color: #e8f4fd;
+            border-left: 4px solid var(--primary-color);
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>資産管理ダッシュボード</h1>
+        <div class="alert-info">
+            🔒 <strong>セキュリティ情報:</strong> 入力された資産データは、お使いのブラウザ（LocalStorage）にのみ保存されます。GitHubのサーバーには一切送信されません。
+        </div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h2>資産データの入力・確認</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>カテゴリー</th>
+                        <th>現在の評価額 (円)</th>
+                        <th>投資元本 (円)</th>
+                        <th>リターン</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="category">銀行口座</td>
+                        <td><input type="number" id="val-bank" value="0"></td>
+                        <td><input type="number" id="cost-bank" value="0"></td>
+                        <td id="ret-bank">0%</td>
+                    </tr>
+                    <tr>
+                        <td class="category">証券口座</td>
+                        <td><input type="number" id="val-stock" value="0"></td>
+                        <td><input type="number" id="cost-stock" value="0"></td>
+                        <td id="ret-stock">0%</td>
+                    </tr>
+                    <tr>
+                        <td class="category">仮想通貨 (BTC/ETH)</td>
+                        <td><input type="number" id="val-crypto" value="0"></td>
+                        <td><input type="number" id="cost-crypto" value="0"></td>
+                        <td id="ret-crypto">0%</td>
+                    </tr>
+                    <tr>
+                        <td class="category">DC口座</td>
+                        <td><input type="number" id="val-dc" value="0"></td>
+                        <td><input type="number" id="cost-dc" value="0"></td>
+                        <td id="ret-dc">0%</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #f9f9f9; font-weight: bold;">
+                        <td>合計</td>
+                        <td id="total-val">0</td>
+                        <td id="total-cost">0</td>
+                        <td id="total-ret">0%</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <button class="btn" onclick="saveData()">データを保存して更新</button>
+        </div>
+
+        <div class="card">
+            <h2>アセットアロケーション</h2>
+            <div class="chart-container">
+                <canvas id="allocationChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // カテゴリー定義
+    const keys = ['bank', 'stock', 'crypto', 'dc'];
+    let chart = null;
+
+    // ページ読み込み時の処理
+    window.onload = function() {
+        loadData();
+        updateDashboard();
+    };
+
+    // LocalStorageからデータを読み込み
+    function loadData() {
+        keys.forEach(key => {
+            const savedVal = localStorage.getItem(`assets_${key}_val`);
+            const savedCost = localStorage.getItem(`assets_${key}_cost`);
+            if (savedVal !== null) document.getElementById(`val-${key}`).value = savedVal;
+            if (savedCost !== null) document.getElementById(`cost-${key}`).value = savedCost;
+        });
+    }
+
+    // LocalStorageへデータを保存
+    function saveData() {
+        keys.forEach(key => {
+            const val = document.getElementById(`val-${key}`).value;
+            const cost = document.getElementById(`cost-${key}`).value;
+            localStorage.setItem(`assets_${key}_val`, val);
+            localStorage.setItem(`assets_${key}_cost`, cost);
+        });
+        updateDashboard();
+        alert('データをブラウザに保存しました。');
+    }
+
+    // 計算と画面・グラフの更新
+    function updateDashboard() {
+        let totalVal = 0;
+        let totalCost = 0;
+        const chartData = [];
+
+        keys.forEach(key => {
+            const val = parseFloat(document.getElementById(`val-${key}`).value) || 0;
+            const cost = parseFloat(document.getElementById(`cost-${key}`).value) || 0;
+            
+            totalVal += val;
+            totalCost += cost;
+            chartData.push(val);
+
+            // 個別リターン計算 (配当込み評価額 / 元本)
+            const retEl = document.getElementById(`ret-${key}`);
+            if (cost > 0) {
+                const roi = ((val - cost) / cost) * 100;
+                retEl.innerText = roi.toFixed(1) + '%';
+                retEl.style.color = roi >= 0 ? '#e74c3c' : '#2ecc71';
+            } else {
+                retEl.innerText = '0%';
+                retEl.style.color = 'inherit';
+            }
+        });
+
+        // 合計値の表示更新
+        document.getElementById('total-val').innerText = totalVal.toLocaleString();
+        document.getElementById('total-cost').innerText = totalCost.toLocaleString();
+
+        // トータルリターン計算
+        const totalRetEl = document.getElementById('total-ret');
+        if (totalCost > 0) {
+            const totalRoi = ((totalVal - totalCost) / totalCost) * 100;
+            totalRetEl.innerText = totalRoi.toFixed(1) + '%';
+            totalRetEl.style.color = totalRoi >= 0 ? '#e74c3c' : '#2ecc71';
+        } else {
+            totalRetEl.innerText = '0%';
+            totalRetEl.style.color = 'inherit';
+        }
+
+        // グラフの描画・更新
+        renderChart(chartData);
+    }
+
+    // Chart.jsによる円グラフ描画
+    function renderChart(data) {
+        const ctx = document.getElementById('allocationChart').getContext('2d');
+        
+        // 既存のグラフがあれば一度破棄
+        if (chart) {
+            chart.destroy();
+        }
+
+        // 全て0の場合は空のグラフにならないよう調整
+        const isAllZero = data.every(v => v === 0);
+        const displayData = isAllZero ? [1, 1, 1, 1] : data;
+
+        chart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['銀行口座', '証券口座', '仮想通貨', 'DC口座'],
+                datasets: [{
+                    data: displayData,
+                    backgroundColor: ['#3498db', '#2ecc71', '#f1c40f', '#9b59b6'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                if (isAllZero) return context.label + ': 0円 (0%)';
+                                const value = data[context.dataIndex];
+                                const sum = data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / sum) * 100).toFixed(1);
+                                return `${context.label}: ${value.toLocaleString()}円 (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>
