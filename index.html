@@ -7,8 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-color: #f0f4f8;
-            --header-bg: #0f172a; /* 深みのあるダークブルー */
+            --bg-color: #f1f5f9;
+            --header-bg: #0f172a;
             --card-bg: #ffffff;
             --text-main: #1e293b;
             --text-sub: #64748b;
@@ -24,247 +24,193 @@
             color: var(--text-main);
             margin: 0;
             padding: 0;
-            line-height: 1.5;
         }
 
-        /* ヘッダーデザイン */
+        /* ヘッダー・マーケット情報 */
         header {
             background-color: var(--header-bg);
             color: #ffffff;
-            padding: 24px 20px;
-            text-align: center;
+            padding: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-        }
-        .security-banner {
-            background-color: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 6px;
-            display: inline-block;
-            margin-top: 12px;
-            padding: 6px 16px;
-            font-size: 13px;
-            color: #cbd5e1;
-        }
-
-        /* レイアウト */
-        .container {
-            max-width: 1100px;
-            margin: 30px auto;
-            padding: 0 20px;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
         @media(min-width: 768px) {
-            .grid { grid-template-columns: 1fr 400px; }
+            .header-container {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
         }
+        header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.05em; }
+        
+        .market-board {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .market-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+        .market-item strong { color: #ffffff; font-size: 14px; margin-left: 4px; }
 
-        /* カード構造 */
+        /* メインレイアウト */
+        .container {
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        
         .card {
             background: var(--card-bg);
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.02);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             border: 1px solid var(--border-color);
         }
         .card h2 {
-            margin: 0 0 18px 0;
-            font-size: 18px;
+            margin: 0 0 16px 0;
+            font-size: 16px;
             font-weight: 600;
             color: var(--text-main);
             border-left: 4px solid var(--primary);
             padding-left: 10px;
         }
 
-        /* テーブルデザイン */
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 10px;
+        .grid-two {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
         }
-        th, td {
-            padding: 12px 10px;
-            border-bottom: 1px solid var(--border-color);
-            text-align: right;
-        }
-        th {
-            background-color: #f8fafc;
-            color: var(--text-sub);
-            font-weight: 600;
-            font-size: 13px;
-            text-align: center;
-        }
-        td.category {
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-        
-        /* 入力欄のモダン化 */
-        input.amount-input {
-            width: 120px;
-            padding: 8px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-family: inherit;
-            font-size: 14px;
-            text-align: right;
-            transition: border-color 0.2s;
-        }
-        input.amount-input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        @media(min-width: 768px) {
+            .grid-two { grid-template-columns: 1fr 420px; }
         }
 
-        /* ボタン */
+        /* テーブル */
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); text-align: right; }
+        th { background-color: #f8fafc; color: var(--text-sub); font-weight: 600; font-size: 13px; text-align: center; }
+        td.category { text-align: left; font-weight: 600; }
+        
+        input.amount-input {
+            width: 110px;
+            padding: 6px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            text-align: right;
+            font-size: 14px;
+        }
+
         .btn {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 10px 24px;
+            padding: 10px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: background-color 0.2s;
         }
         .btn:hover { background-color: #2563eb; }
-        .btn-secondary {
-            background-color: #64748b;
-        }
-        .btn-secondary:hover { background-color: #475569; }
+        .btn-secondary { background-color: #64748b; padding: 6px 12px; font-size: 12px; }
 
-        /* グラフエリア */
-        .chart-box {
-            position: relative;
-            margin: 20px auto;
-            height: 280px;
-            width: 280px;
-        }
+        /* ドーナツグラフ */
+        .chart-box { position: relative; margin: 10px auto; height: 240px; width: 240px; }
         .chart-center-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            pointer-events: none;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; pointer-events: none;
         }
-        .chart-center-text .label { font-size: 12px; color: var(--text-sub); }
-        .chart-center-text .val { font-size: 20px; font-weight: 700; color: var(--text-main); }
+        .chart-center-text .label { font-size: 11px; color: var(--text-sub); }
+        .chart-center-text .val { font-size: 18px; font-weight: 700; }
 
-        /* バックアップ（エクスポート/インポート） */
-        .backup-section {
-            margin-top: 24px;
-            padding-top: 20px;
-            border-top: 1px dashed var(--border-color);
-        }
-        .backup-desc {
-            font-size: 12px;
-            color: var(--text-sub);
-            margin-bottom: 10px;
-        }
-        textarea.backup-io {
-            width: 100%;
-            height: 60px;
-            padding: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            box-sizing: border-box;
-            resize: none;
-            background: #f8fafc;
-        }
-        .backup-buttons {
-            margin-top: 8px;
-            display: flex;
-            gap: 10px;
-        }
-        .backup-buttons .btn {
-            padding: 6px 12px;
-            font-size: 12px;
-        }
+        /* 推移グラフ用 */
+        .trend-box { height: 300px; width: 100%; }
+
+        /* バックアップ・履歴操作 */
+        .flex-between { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+        .history-controls { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+        .history-controls input { padding: 5px; border-radius: 4px; border: 1px solid #cbd5e1; width: 110px; }
+        textarea.backup-io { width: 100%; height: 40px; font-family: monospace; font-size: 11px; margin-top: 8px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>MY PORTFOLIO</h1>
-    <div class="security-banner">
-        🔒 セキュリティ設計: データはブラウザのLocalStorageにのみ暗号保管されます
+    <div class="header-container">
+        <h1>MY PORTFOLIO</h1>
+        <div class="market-board">
+            <div class="market-item">USD/JPY <strong id="mkt-usdjpy">---</strong></div>
+            <div class="market-item">BTC/JPY <strong id="mkt-btcjpy">---</strong></div>
+            <div class="market-item">GOLD (円/g) <strong id="mkt-gold">---</strong></div>
+            <div class="market-item">S&P 500 <strong id="mkt-sp500">---</strong></div>
+        </div>
     </div>
 </header>
 
 <div class="container">
-    <div class="grid">
+    <div class="card">
+        <h2>資産推移（ヒストリカルデータ）</h2>
+        <div class="trend-box">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+
+    <div class="grid-two">
         <div class="card">
             <h2>資産データの入力・確認</h2>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 30%;">カテゴリー</th>
+                        <th>カテゴリー</th>
                         <th>現在の評価額 (円)</th>
                         <th>投資元本 (円)</th>
-                        <th style="width: 20%;">損益率</th>
+                        <th>損益率</th>
                     </tr>
                 </thead>
-                <tbody id="asset-rows">
-                    <tr data-key="bank">
-                        <td class="category">銀行口座</td>
-                        <td><input type="text" class="amount-input" id="val-bank" value="0"></td>
-                        <td><input type="text" class="amount-input" id="cost-bank" value="0"></td>
-                        <td id="ret-bank" style="font-weight: 600;">0%</td>
-                    </tr>
-                    <tr data-key="stock">
-                        <td class="category">証券口座</td>
-                        <td><input type="text" class="amount-input" id="val-stock" value="0"></td>
-                        <td><input type="text" class="amount-input" id="cost-stock" value="0"></td>
-                        <td id="ret-stock" style="font-weight: 600;">0%</td>
-                    </tr>
-                    <tr data-key="crypto">
-                        <td class="category">仮想通貨 (BTC/ETH)</td>
-                        <td><input type="text" class="amount-input" id="val-crypto" value="0"></td>
-                        <td><input type="text" class="amount-input" id="cost-crypto" value="0"></td>
-                        <td id="ret-crypto" style="font-weight: 600;">0%</td>
-                    </tr>
-                    <tr data-key="dc">
-                        <td class="category">DC口座</td>
-                        <td><input type="text" class="amount-input" id="val-dc" value="0"></td>
-                        <td><input type="text" class="amount-input" id="cost-dc" value="0"></td>
-                        <td id="ret-dc" style="font-weight: 600;">0%</td>
-                    </tr>
+                <tbody>
+                    <tr data-key="bank"><td class="category">銀行口座</td><td><input type="text" class="amount-input" id="val-bank" value="0"></td><td><input type="text" class="amount-input" id="cost-bank" value="0"></td><td id="ret-bank" style="font-weight:600;">0%</td></tr>
+                    <tr data-key="stock"><td class="category">証券口座</td><td><input type="text" class="amount-input" id="val-stock" value="0"></td><td><input type="text" class="amount-input" id="cost-stock" value="0"></td><td id="ret-stock" style="font-weight:600;">0%</td></tr>
+                    <tr data-key="crypto"><td class="category">仮想通貨 (BTC/ETH)</td><td><input type="text" class="amount-input" id="val-crypto" value="0"></td><td><input type="text" class="amount-input" id="cost-crypto" value="0"></td><td id="ret-crypto" style="font-weight:600;">0%</td></tr>
+                    <tr data-key="dc"><td class="category">DC口座</td><td><input type="text" class="amount-input" id="val-dc" value="0"></td><td><input type="text" class="amount-input" id="cost-dc" value="0"></td><td id="ret-dc" style="font-weight:600;">0%</td></tr>
                 </tbody>
                 <tfoot>
                     <tr style="background-color: #f8fafc; font-weight: bold;">
                         <td style="text-align: left;">合計</td>
                         <td id="total-val">0</td>
                         <td id="total-cost">0</td>
-                        <td id="total-ret" style="font-size: 16px;">0%</td>
+                        <td id="total-ret" style="font-size: 15px;">0%</td>
                     </tr>
                 </tfoot>
             </table>
             
-            <div style="margin-top: 18px; text-align: right;">
+            <div class="flex-between">
+                <div class="history-controls">
+                    <input type="month" id="history-date">
+                    <button class="btn btn-secondary" onclick="saveCurrentToHistory()">この年月で推移に記録</button>
+                </div>
                 <button class="btn" onclick="saveData()">データを保存して更新</button>
             </div>
 
-            <div class="backup-section">
-                <h2>データのバックアップ（移行・復元）</h2>
-                <div class="backup-desc">他の端末にデータを移したい時やバックアップを取りたい時は、下のテキストを利用してください。</div>
-                <textarea id="backupText" class="backup-io" placeholder="ここに書き出されたコードをコピーするか、復元したいコードを貼り付けます"></textarea>
-                <div class="backup-buttons">
-                    <button class="btn btn-secondary" onclick="exportData()">コードを書き出す (Export)</button>
-                    <button class="btn btn-secondary" onclick="importData()">貼り付けたコードから復元 (Import)</button>
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
+                <span style="font-size:12px; color:var(--text-sub);">データ移行用コード：</span>
+                <textarea id="backupText" class="backup-io" placeholder="エクスポート/インポート用"></textarea>
+                <div style="margin-top:5px; display:flex; gap:5px;">
+                    <button class="btn btn-secondary" onclick="exportData()">書き出し</button>
+                    <button class="btn btn-secondary" onclick="importData()">復元</button>
+                    <button class="btn btn-secondary" style="background-color:#e11d48;" onclick="clearHistory()">推移履歴をクリア</button>
                 </div>
             </div>
         </div>
@@ -284,26 +230,63 @@
 
 <script>
     const keys = ['bank', 'stock', 'crypto', 'dc'];
-    let chart = null;
+    let allocChart = null;
+    let trendChart = null;
+    let historyData = []; // [{date: '2026-01', bank: 100, stock: 200...}]
 
     window.onload = function() {
+        // デフォルトの年月（今月）をセット
+        const now = new Date();
+        document.getElementById('history-date').value = now.toISOString().substring(0, 7);
+
         setupInputListeners();
         loadData();
+        fetchMarketRates();
         updateDashboard();
     };
 
-    // カンマ区切りのセットアップ
+    // 公開API（Yahoo Finance等から取得できるpublicプロキシ）を利用したレート取得
+    async function fetchMarketRates() {
+        try {
+            // 米ドル円, BTC円, 金スポット(米ドル/オンス), S&P500を取得
+            const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/JPY=X');
+            const btcRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/BTC-JPY');
+            const gldRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC=F');
+            const spRes = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/^GSPC');
+
+            if(res.ok) {
+                const json = await res.json();
+                const rate = json.chart.result[0].meta.regularMarketPrice;
+                document.getElementById('mkt-usdjpy').innerText = '¥' + rate.toFixed(2);
+                
+                // 金価格の計算（ドル建て1オンスあたりから、日本円の1gあたりに換算。1オンス=31.1035g）
+                if(gldRes.ok) {
+                    const gldJson = await gldRes.json();
+                    const gldDol = gldJson.chart.result[0].meta.regularMarketPrice;
+                    const gldJpyGram = (gldDol * rate) / 31.1035;
+                    document.getElementById('mkt-gold').innerText = '¥' + Math.round(gldJpyGram).toLocaleString();
+                }
+            }
+            if(btcRes.ok) {
+                const json = await btcRes.json();
+                document.getElementById('mkt-btcjpy').innerText = '¥' + Math.round(json.chart.result[0].meta.regularMarketPrice).toLocaleString();
+            }
+            if(spRes.ok) {
+                const json = await spRes.json();
+                document.getElementById('mkt-sp500').innerText = json.chart.result[0].meta.regularMarketPrice.toLocaleString();
+            }
+        } catch(e) {
+            console.log("レート取得エラー: ", e);
+            // オフラインやエラー時のフォールバック表記
+            document.getElementById('mkt-usdjpy').innerText = '取得エラー';
+        }
+    }
+
     function setupInputListeners() {
         keys.forEach(key => {
             ['val', 'cost'].forEach(type => {
                 const input = document.getElementById(`${type}-${key}`);
-                
-                // 入力フォーカス時：カンマを外す
-                input.addEventListener('focus', function() {
-                    this.value = this.value.replace(/,/g, '');
-                });
-                
-                // フォーカスが外れた時：数値をチェックしてカンマを付与
+                input.addEventListener('focus', function() { this.value = this.value.replace(/,/g, ''); });
                 input.addEventListener('blur', function() {
                     let num = parseFloat(this.value.replace(/,/g, '')) || 0;
                     this.value = num.toLocaleString();
@@ -312,36 +295,70 @@
         });
     }
 
-    // 補助関数: カンマを除去して数値化
     function getNumericValue(id) {
-        const valStr = document.getElementById(id).value.replace(/,/g, '');
-        return parseFloat(valStr) || 0;
+        return parseFloat(document.getElementById(id).value.replace(/,/g, '')) || 0;
     }
 
-    // LocalStorageから読み込み
     function loadData() {
         keys.forEach(key => {
             const savedVal = localStorage.getItem(`assets_${key}_val`) || '0';
             const savedCost = localStorage.getItem(`assets_${key}_cost`) || '0';
-            
             document.getElementById(`val-${key}`).value = parseFloat(savedVal).toLocaleString();
             document.getElementById(`cost-${key}`).value = parseFloat(savedCost).toLocaleString();
         });
+        // 履歴のロード
+        const savedHistory = localStorage.getItem('assets_history_data');
+        if (savedHistory) {
+            historyData = JSON.parse(savedHistory);
+        }
     }
 
-    // LocalStorageへ保存
     function saveData() {
         keys.forEach(key => {
-            const val = getNumericValue(`val-${key}`);
-            const cost = getNumericValue(`cost-${key}`);
-            localStorage.setItem(`assets_${key}_val`, val);
-            localStorage.setItem(`assets_${key}_cost`, cost);
+            localStorage.setItem(`assets_${key}_val`, getNumericValue(`val-${key}`));
+            localStorage.setItem(`assets_${key}_cost`, getNumericValue(`cost-${key}`));
         });
         updateDashboard();
-        alert('データを保存しました。');
+        alert('現在のデータをローカルに保存しました。');
     }
 
-    // 計算と画面更新
+    // 新機能：現在の入力値を指定の年月のヒストリカルデータとして蓄積
+    function saveCurrentToHistory() {
+        const dateStr = document.getElementById('history-date').value;
+        if(!dateStr) return alert('年月を正しく選択してください。');
+
+        // 同一年月があれば上書き、なければ新規追加
+        const existingIdx = historyData.findIndex(item => item.date === dateStr);
+        const currentSnap = {
+            date: dateStr,
+            bank: getNumericValue('val-bank'),
+            stock: getNumericValue('val-stock'),
+            crypto: getNumericValue('val-crypto'),
+            dc: getNumericValue('val-dc')
+        };
+
+        if(existingIdx >= 0) {
+            historyData[existingIdx] = currentSnap;
+        } else {
+            historyData.push(currentSnap);
+        }
+
+        // 年月順に並び替え
+        historyData.sort((a, b) => a.date.localeCompare(b.date));
+        
+        localStorage.setItem('assets_history_data', JSON.stringify(historyData));
+        updateDashboard();
+        alert(`${dateStr} のデータを推移グラフに記録しました。`);
+    }
+
+    function clearHistory() {
+        if(confirm('これまでに蓄積した資産推移の履歴データをすべて削除しますか？（現在の入力値は消えません）')) {
+            historyData = [];
+            localStorage.removeItem('assets_history_data');
+            updateDashboard();
+        }
+    }
+
     function updateDashboard() {
         let totalVal = 0;
         let totalCost = 0;
@@ -350,7 +367,6 @@
         keys.forEach(key => {
             const val = getNumericValue(`val-${key}`);
             const cost = getNumericValue(`cost-${key}`);
-            
             totalVal += val;
             totalCost += cost;
             chartData.push(val);
@@ -361,8 +377,7 @@
                 retEl.innerText = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
                 retEl.style.color = roi >= 0 ? 'var(--danger)' : 'var(--success)';
             } else {
-                retEl.innerText = '0%';
-                retEl.style.color = 'inherit';
+                retEl.innerText = '0%'; retEl.style.color = 'inherit';
             }
         });
 
@@ -376,98 +391,101 @@
             totalRetEl.innerText = (totalRoi >= 0 ? '+' : '') + totalRoi.toFixed(1) + '%';
             totalRetEl.style.color = totalRoi >= 0 ? 'var(--danger)' : 'var(--success)';
         } else {
-            totalRetEl.innerText = '0%';
-            totalRetEl.style.color = 'inherit';
+            totalRetEl.innerText = '0%'; totalRetEl.style.color = 'inherit';
         }
 
-        renderChart(chartData);
+        renderCharts(chartData);
     }
 
-    // ドーナツグラフの描画
-    function renderChart(data) {
-        const ctx = document.getElementById('allocationChart').getContext('2d');
-        if (chart) { chart.destroy(); }
+    function renderCharts(allocData) {
+        // 1. アロケーションドーナツ
+        const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
+        if (allocChart) { allocChart.destroy(); }
+        const isAllZero = allocData.every(v => v === 0);
 
-        const isAllZero = data.every(v => v === 0);
-        const displayData = isAllZero ? [1, 1, 1, 1] : data;
-
-        chart = new Chart(ctx, {
+        allocChart = new Chart(ctxAlloc, {
             type: 'doughnut',
             data: {
                 labels: ['銀行口座', '証券口座', '仮想通貨', 'DC口座'],
                 datasets: [{
-                    data: displayData,
+                    data: isAllZero ? [1,1,1,1] : allocData,
                     backgroundColor: ['#38bdf8', '#3b82f6', '#f59e0b', '#a855f7'],
-                    borderWidth: 2,
-                    hoverOffset: 4
+                    borderWidth: 2
                 }]
             },
             options: {
+                responsive: true, maintainAspectRatio: false, cutout: '75%',
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // 2. 資産推移（積み上げ棒グラフ）
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        if (trendChart) { trendChart.destroy(); }
+
+        // 履歴データがない場合のダミー初期表示
+        const labels = historyData.length > 0 ? historyData.map(d => d.date) : ['データなし'];
+        const datasets = [
+            { label: '銀行口座', data: historyData.map(d => d.bank), backgroundColor: '#38bdf8' },
+            { label: '証券口座', data: historyData.map(d => d.stock), backgroundColor: '#3b82f6' },
+            { label: '仮想通貨', data: historyData.map(d => d.crypto), backgroundColor: '#f59e0b' },
+            { label: 'DC口座', data: historyData.map(d => d.dc), backgroundColor: '#a855f7' }
+        ];
+        if(historyData.length === 0) {
+            datasets.forEach(ds => ds.data = [0]);
+        }
+
+        trendChart = new Chart(ctxTrend, {
+            type: 'bar',
+            data: { labels: labels, datasets: datasets },
+            options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '75%', // ドーナツの穴の大きさ
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, ticks: { callback: value => '¥' + (value / 10000).toLocaleString() + '万' } }
+                },
                 plugins: {
-                    legend: { display: false }, // リストで見えるため凡例は非表示にしてすっきり
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                if (isAllZero) return context.label + ': 0円 (0%)';
-                                const value = data[context.dataIndex];
-                                const sum = data.reduce((a, b) => a + b, 0);
-                                const percentage = ((value / sum) * 100).toFixed(1);
-                                return ` ${context.label}: ${value.toLocaleString()}円 (${percentage}%)`;
-                            }
-                        }
-                    }
+                    legend: { position: 'bottom' }
                 }
             }
         });
     }
 
-    // エクスポート機能
+    // 一括エクスポート／インポート（推移データも含む仕様に強化）
     function exportData() {
-        const exportObj = {};
+        const exportObj = { history: historyData, current: {} };
         keys.forEach(key => {
-            exportObj[`assets_${key}_val`] = getNumericValue(`val-${key}`);
-            exportObj[`assets_${key}_cost`] = getNumericValue(`cost-${key}`);
+            exportObj.current[`val_${key}`] = getNumericValue(`val-${key}`);
+            exportObj.current[`cost_${key}`] = getNumericValue(`cost-${key}`);
         });
-        
-        // JSON文字列に変換（1行に圧縮）してテキストエリアに出力
         const jsonString = btoa(unescape(encodeURIComponent(JSON.stringify(exportObj))));
         document.getElementById('backupText').value = jsonString;
         document.getElementById('backupText').select();
-        alert('バックアップコードを書き出しました！青く選択されたテキストをコピーして安全な場所に保管してください。');
+        alert('設定と推移データを含むすべてのバックアップコードを生成しました。');
     }
 
-    // インポート機能
     function importData() {
         const code = document.getElementById('backupText').value.trim();
-        if (!code) {
-            alert('復元するコードをテキストエリアに貼り付けてください。');
-            return;
-        }
-
-        if (confirm('データを復元しますか？（現在入力されている内容は上書きされます）')) {
+        if (!code) return alert('コードを貼り付けてください。');
+        if (confirm('データを復元しますか？履歴もすべて上書きされます。')) {
             try {
-                const decodedJson = decodeURIComponent(escape(atob(code)));
-                const data = JSON.parse(decodedJson);
-                
-                keys.forEach(key => {
-                    if(data[`assets_${key}_val`] !== undefined) {
-                        localStorage.setItem(`assets_${key}_val`, data[`assets_${key}_val`]);
-                    }
-                    if(data[`assets_${key}_cost`] !== undefined) {
-                        localStorage.setItem(`assets_${key}_cost`, data[`assets_${key}_cost`]);
-                    }
-                });
-
+                const data = JSON.parse(decodeURIComponent(escape(atob(code))));
+                if(data.history) {
+                    historyData = data.history;
+                    localStorage.setItem('assets_history_data', JSON.stringify(historyData));
+                }
+                if(data.current) {
+                    keys.forEach(key => {
+                        if(data.current[`val_${key}`] !== undefined) localStorage.setItem(`assets_${key}_val`, data.current[`val_${key}`]);
+                        if(data.current[`cost_${key}`] !== undefined) localStorage.setItem(`assets_${key}_cost`, data.current[`cost_${key}`]);
+                    });
+                }
                 loadData();
                 updateDashboard();
                 document.getElementById('backupText').value = '';
-                alert('データの復元が完了しました！');
-            } catch (e) {
-                alert('無効なバックアップコードです。正しくコピーされているか確認してください。');
-            }
+                alert('すべてのデータを復元しました！');
+            } catch (e) { alert('無効なコードです。'); }
         }
     }
 </script>
