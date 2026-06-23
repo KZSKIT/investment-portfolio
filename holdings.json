@@ -1,1 +1,35 @@
-[]
+[
+  {
+    "id": 1782226134186,
+    "cat": "us-stock",
+    "symbol": "INTC",
+    "name": "INTC",
+    "broker": "楽天証券",
+    "purchaseDate": "2024-09-04",
+    "qty": 30,
+    "cost": 21.53,
+    "price": 140.94000244140625
+  },
+  {
+    "id": 1782226173312,
+    "cat": "jp-stock",
+    "symbol": "2157.T",
+    "name": "2157.T",
+    "broker": "SBI証券",
+    "purchaseDate": "2022-08-12",
+    "qty": 1,
+    "cost": 829,
+    "price": 933
+  },
+  {
+    "id": 1782226486014,
+    "cat": "jp-stock",
+    "symbol": "7453.T",
+    "name": "日本株銘柄 (7453)",
+    "broker": "楽天証券",
+    "purchaseDate": "2023-04-27",
+    "qty": 200,
+    "cost": 694,
+    "price": 0
+  }
+]
