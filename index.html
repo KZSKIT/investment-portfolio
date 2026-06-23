@@ -117,7 +117,7 @@
         th.sortable { cursor: pointer; user-select: none; }
         th.sortable:hover { background: #e2e8f0; }
 
-        .btn { background-color: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .btn { background-color: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
         .btn:hover { background-color: #2563eb; }
         .btn-secondary { background-color: #64748b; padding: 6px 12px; font-size: 12px; border-radius: 4px; border: none; color: white; cursor: pointer; }
         .btn-delete { background: none; border: none; color: var(--text-sub); cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 6px; }
@@ -236,7 +236,7 @@
             </select>
             <input type="text" id="form-symbol" placeholder="Yahooコード (例: 7203.T)">
             <button type="button" class="btn-secondary" id="btn-ticker-check" onclick="fetchTickerInfo()">コード確認</button>
-            <input type="text" id="form-name" placeholder="銘柄名" style="width:200px;">
+            <input type="text" id="form-name" placeholder="銘柄名" style="width:250px;">
             <input type="text" id="form-broker" placeholder="証券会社" list="broker-list">
             <datalist id="broker-list"></datalist>
         </div>
@@ -318,9 +318,21 @@
     async function loadGitHubPrices() {
         try {
             const res = await fetch(`prices.json?t=${Date.now()}`);
-            if (res.ok) { fetchedPrices = await res.json(); }
+            if (res.ok) { 
+                fetchedPrices = await res.json(); 
+                console.log("GitHubからロードされた価格マスター:", fetchedPrices);
+            }
         } catch(e) { console.error("GitHub株価のロード失敗", e); }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        window.setTrendUnit = function(unit) {
+            trendUnit = unit;
+            document.querySelectorAll('[id^="unit-"]').forEach(b => b.classList.remove('active'));
+            document.getElementById(`unit-${unit}`).classList.add('active');
+            renderDashboard();
+        }
+    });
 
     function loadHoldingsAndHistory() {
         const isInitialized = localStorage.getItem('my_portfolio_initialized');
@@ -334,48 +346,27 @@
         updateBrokerDatalist();
     }
 
-    // 過去に入力された証券会社を集計してプルダウン候補にする関数
     function updateBrokerDatalist() {
         const listEl = document.getElementById('broker-list');
         if (!listEl) return;
         listEl.innerHTML = '';
         const uniqueBrokers = [...new Set(holdings.map(h => h.broker).filter(b => b && b !== '-'))];
-        uniqueBrokers.forEach(b => {
-            listEl.innerHTML += `<option value="${b}">`;
-        });
+        uniqueBrokers.forEach(b => { listEl.innerHTML += `<option value="${b}">`; });
     }
 
-    // 【新機能】CORSプロキシを経由して、入力されたコードから銘柄名と現在株価をその場で自動取得
-    async function fetchTickerInfo() {
+    // 【完全新設計】CORS制限のある外部への直接通信を全廃。
+    // 手元（GitHub Pages）に読み込み済みの prices.json から100%確実に名前と価格を瞬時に参照・自動補完する
+    function fetchTickerInfo() {
         const symbol = document.getElementById('form-symbol').value.trim();
         if (!symbol) return alert('Yahooコードを入力してください（例: 7203.T, AAPL）');
         
-        const btn = document.getElementById('btn-ticker-check');
-        const oldText = btn.innerText;
-        btn.innerText = '取得中...';
-        btn.disabled = true;
-
-        try {
-            const url = encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`);
-            const res = await fetch(`https://api.allorigins.win/get?url=${url}`);
-            if (!res.ok) throw new Error();
-            
-            const proxyData = await res.json();
-            const json = JSON.parse(proxyData.contents);
-            const result = json.quoteResponse.result[0];
-            
-            if (result) {
-                document.getElementById('form-name').value = result.longName || result.shortName || symbol;
-                document.getElementById('form-price').value = result.regularMarketPrice || 0;
-            } else {
-                alert('銘柄情報が見つかりませんでした。コードが正しいか確認してください（国内株は末尾に .T が必要です）。');
-            }
-        } catch(e) {
-            console.error(e);
-            alert('自動取得に失敗しました。CORSプロキシ混雑の可能性があります。手動で直接ご入力ください。');
-        } finally {
-            btn.innerText = oldText;
-            btn.disabled = false;
+        if (fetchedPrices && fetchedPrices[symbol]) {
+            const info = fetchedPrices[symbol];
+            document.getElementById('form-name').value = info.name || symbol;
+            document.getElementById('form-price').value = info.price || 0;
+            console.log(`マスターデータから自動補完成功: ${symbol}`);
+        } else {
+            alert(`このコード（${symbol}）は、GitHub側の自動更新リスト（update-prices.mjs）にまだ未登録か、あるいはコミット後の初回Actionsが未実行です。\n\n【実運用での手順】\n1. 先にGitHubの update-prices.mjs の SYMBOLS 配列にこのコードを書き足してコミットしてください。\n2. Actionsを動かすと、次回からここに入れるだけで名前と現在値が100%自動で引っ張れるようになります！\n\n※今すぐ登録したい場合は、銘柄名と現在値を手動で入力して進めることも可能です。`);
         }
     }
 
@@ -399,8 +390,7 @@
         ];
         
         historySnapshots = [];
-        let startDate = new Date(2023, 5, 30);
-        const endDate = new Date(2026, 5, 23);
+        let startDate = new Date(2023, 5, 30); const endDate = new Date(2026, 5, 23);
         const baseValues = { 'jp-stock': 900000, 'us-stock': 850000, 'fund': 1500000, 'gold': 800000, 'crypto': 500000 };
         let idx = 0;
         while (startDate <= endDate) {
@@ -413,15 +403,12 @@
                 'gold':     Math.round(baseValues['gold'] * (1.0 + trend * 0.7 + waveB * 0.6)),
                 'crypto':   Math.round(baseValues['crypto'] * (1.0 + trend * 2.5 + Math.sin(idx * 0.7) * 0.35 + (Math.random() * 0.12)))
             });
-            startDate.setMonth(startDate.getMonth() + 1);
-            startDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
-            idx++;
+            startDate.setMonth(startDate.getMonth() + 1); startDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); idx++;
         }
         localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
         localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots));
     }
 
-    // フォームから入力データを回収して正式に追加する関数
     function addRealData() {
         const name = document.getElementById('form-name').value.trim();
         if(!name) return alert('銘柄名を入力、またはコード確認を行ってください');
@@ -444,7 +431,6 @@
         updateBrokerDatalist();
         renderDashboard();
         
-        // フォームをリセット
         document.getElementById('form-name').value = '';
         document.getElementById('form-symbol').value = '';
         document.getElementById('form-qty').value = '';
@@ -475,9 +461,7 @@
 
     function restoreDemoDataset() {
         if(confirm('デモデータを再ロードしますか？')) {
-            loadDemoDataset();
-            updateBrokerDatalist();
-            renderDashboard();
+            loadDemoDataset(); updateBrokerDatalist(); renderDashboard();
         }
     }
 
@@ -527,12 +511,6 @@
         trendRange = range;
         document.querySelectorAll('[id^="range-"]').forEach(b => b.classList.remove('active'));
         document.getElementById(`range-${range}`).classList.add('active');
-        renderDashboard();
-    }
-    window.setTrendUnit = function(unit) {
-        trendUnit = unit;
-        document.querySelectorAll('[id^="unit-"]').forEach(b => b.classList.remove('active'));
-        document.getElementById(`unit-${unit}`).classList.add('active');
         renderDashboard();
     }
 
