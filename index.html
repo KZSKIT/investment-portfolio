@@ -127,9 +127,10 @@
         .chart-center-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; pointer-events: none;
+            width: 80%;
         }
         .chart-center-text .label { font-size: 11px; color: var(--text-sub); }
-        .chart-center-text .val { font-size: 20px; font-weight: 700; }
+        .chart-center-text .val { font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* ランキング */
         .ranking-container {
@@ -150,7 +151,7 @@
         .ranking-title { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 8px; }
         .ranking-item { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
 
-        /* モバイル用チップ */
+        /* モバイル用ソートチップ */
         .sort-chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
         @media(min-width: 768px) { .sort-chips { display: none; } }
         .chip {
@@ -204,9 +205,9 @@
 
             <h2 id="detail-title" style="margin-top: 30px;">銘柄明細 (全表示)</h2>
             <div class="sort-chips" id="sort-chips">
-                <div class="chip active" onclick="setSort('name')">銘柄名</div>
-                <div class="chip" onclick="setSort('eval')">評価額</div>
-                <div class="chip" onclick="setSort('profit')">評価損益</div>
+                <div class="chip" id="chip-name" onclick="setSort('name')">銘柄名</div>
+                <div class="chip active" id="chip-eval" onclick="setSort('eval')">評価額</div>
+                <div class="chip" id="chip-profit" onclick="setSort('profit')">評価損益</div>
             </div>
             <table class="detail-table">
                 <thead>
@@ -225,11 +226,11 @@
 
         <div class="grid-one">
             <div class="card">
-                <h2>アセットアロケーション</h2>
+                <h2 id="chart-title">アセットアロケーション</h2>
                 <div class="chart-box">
                     <canvas id="allocationChart"></canvas>
                     <div class="chart-center-text">
-                        <div class="label">評価額合計</div>
+                        <div class="label" id="chart-center-label">評価額合計</div>
                         <div class="val" id="chart-center-val">¥0</div>
                     </div>
                 </div>
@@ -265,7 +266,7 @@
             <input type="text" id="form-broker" placeholder="証券会社（例: SBI証券）">
             <input type="number" id="form-qty" placeholder="保有数量">
             <input type="number" id="form-cost" placeholder="取得単価">
-            <input type="number" id="form-price" placeholder="現在値（手動シミュレート用）">
+            <input type="number" id="form-price" placeholder="現在値">
             <button class="btn" onclick="addTestData()">銘柄を追加</button>
             <button class="btn btn-secondary" onclick="clearTestData()" style="background:#ef4444;">データ全消去</button>
         </div>
@@ -273,7 +274,6 @@
 </div>
 
 <script>
-    // 5大カテゴリの色定義をJS側でも一貫運用
     const catConfig = {
         'jp-stock': { name: '国内株', color: '#3b82f6' },
         'us-stock': { name: '米国株', color: '#1d4ed8' },
@@ -283,7 +283,7 @@
     };
 
     let holdings = [];
-    let currentFilter = null; // ドリルダウン用
+    let currentFilter = null; 
     let currentSort = { key: 'eval', asc: false };
     let allocChart = null;
 
@@ -293,7 +293,6 @@
         renderDashboard();
     };
 
-    // 為替・金のライブ取得（ブラウザから直接取得可能なエンドポイント）
     async function fetchLiveRates() {
         try {
             const resUsd = await fetch('https://open.er-api.com/v6/latest/USD');
@@ -315,13 +314,13 @@
         if (saved) {
             holdings = JSON.parse(saved);
         } else {
-            // 初期表示用のダミー設定
             holdings = [
                 { id: 1, cat: 'jp-stock', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', qty: 100, cost: 2500, price: 2800 },
-                { id: 2, cat: 'us-stock', name: 'Apple (AAPL)', broker: '楽天証券', qty: 10, cost: 180, price: 210 }, // 本来はドル換算が必要ですがステップ1のベースとして
-                { id: 3, cat: 'fund', name: 'eMAXIS Slim 全世界株式', broker: 'SBI証券', qty: 50000, cost: 2.0, price: 2.4 },
-                { id: 4, cat: 'gold', name: '純金積立', broker: '田中貴金属', qty: 50, cost: 9000, price: 12000 },
-                { id: 5, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.05, cost: 6000000, price: 9500000 }
+                { id: 2, cat: 'jp-stock', name: '三菱UFJ (8306)', broker: 'SBI証券', qty: 200, cost: 1200, price: 1550 },
+                { id: 3, cat: 'us-stock', name: 'Apple (AAPL)', broker: '楽天証券', qty: 10, cost: 180, price: 210 }, 
+                { id: 4, cat: 'fund', name: 'eMAXIS Slim 全世界株式', broker: 'SBI証券', qty: 50000, cost: 2.0, price: 2.4 },
+                { id: 5, cat: 'gold', name: '純金積立', broker: '田中貴金属', qty: 50, cost: 9000, price: 12000 },
+                { id: 6, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.05, cost: 6000000, price: 9500000 }
             ];
             localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
         }
@@ -367,6 +366,7 @@
         currentSort.asc = false;
         const chips = document.querySelectorAll('.chip');
         chips.forEach(c => c.classList.remove('active'));
+        document.getElementById(`chip-${key}`).classList.add('active');
         renderDashboard();
     }
 
@@ -375,16 +375,30 @@
         renderDashboard();
     }
 
+    // 【新設】固定カテゴリ色をベースに、ノイズのない階調（透明度）のカラーを生成する関数
+    function getGradatedColor(cat, index, total) {
+        const baseColor = catConfig[cat].color;
+        if (total <= 1) return baseColor;
+        
+        // 1.0〜0.3の間でアルファ値を等間隔に落とす（余計な色を足さない）
+        const minAlpha = 0.35;
+        const alpha = 1.0 - ((1.0 - minAlpha) * (index / (total - 1 || 1)));
+        
+        const c = baseColor.replace('#', '');
+        const r = parseInt(c.substring(0, 2), 16);
+        const g = parseInt(c.substring(2, 4), 16);
+        const b = parseInt(c.substring(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
     function renderDashboard() {
-        // 1. 各集計値のクリアと再計算
         let totalVal = 0;
         const catTotals = { 'jp-stock': { val: 0, cost: 0 }, 'us-stock': { val: 0, cost: 0 }, 'fund': { val: 0, cost: 0 }, 'gold': { val: 0, cost: 0 }, 'crypto': { val: 0, cost: 0 } };
 
+        // 評価額算出
         holdings.forEach(h => {
-            // 米国株の一時的な簡易円換算シミュレート（ステップ2で為替レートと連動させます）
             const isUs = h.cat === 'us-stock';
             const rate = isUs ? 160 : 1; 
-
             const evalVal = h.qty * h.price * rate;
             const costVal = h.qty * h.cost * rate;
 
@@ -393,27 +407,19 @@
             totalVal += evalVal;
         });
 
-        // 2. 区分別サマリーテーブルの描画
+        // 1. 区分別サマリーテーブルの描画
         const summaryBody = document.getElementById('summary-body');
         summaryBody.innerHTML = '';
         
-        const chartLabels = [];
-        const chartData = [];
-        const chartColors = [];
-
         Object.keys(catConfig).forEach(cat => {
             const data = catTotals[cat];
             const pct = totalVal > 0 ? ((data.val / totalVal) * 100).toFixed(1) : '0.0';
             const profit = data.val - data.cost;
             const profitPct = data.cost > 0 ? ((profit / data.cost) * 100).toFixed(1) : '0.0';
 
-            chartLabels.push(catConfig[cat].name);
-            chartData.push(data.val);
-            chartColors.push(catConfig[cat].color);
-
-            let trendColor = varColor('--trend-flat');
-            if (profit > 0) trendColor = 'var(--danger)'; // プラス＝赤
-            if (profit < 0) trendColor = 'var(--success)'; // マイナス＝緑
+            let trendColor = 'var(--trend-flat)';
+            if (profit > 0) trendColor = 'var(--trend-plus)';
+            if (profit < 0) trendColor = 'var(--trend-minus)';
 
             const isSelected = currentFilter === cat ? 'background:#f1f5f9; border-left:4px solid ' + catConfig[cat].color : '';
 
@@ -435,12 +441,8 @@
             `;
         });
 
-        // 3. ドーナツ中央・グラフ更新
-        document.getElementById('chart-center-val').innerText = '¥' + Math.round(totalVal).toLocaleString();
-        renderDonut(chartLabels, chartData, chartColors);
-
-        // 4. 明細テーブルのフィルタ＆ソート適用
-        let filteredHoldings = holdings.map(h => {
+        // 2. 明細用データの生成・フィルタ・ソート
+        let processedHoldings = holdings.map(h => {
             const isUs = h.cat === 'us-stock';
             const rate = isUs ? 160 : 1;
             const evalVal = h.qty * h.price * rate;
@@ -450,34 +452,62 @@
             return { ...h, evalVal, profit, profitPct };
         });
 
-        if (currentFilter) {
-            filteredHoldings = filteredHoldings.filter(h => h.cat === currentFilter);
-            document.getElementById('detail-title').innerText = `銘柄明細 (${catConfig[currentFilter].name} 内訳)`;
-        } else {
-            document.getElementById('detail-title').innerText = "銘柄明細 (全表示)";
-        }
-
-        // ソート処理
-        filteredHoldings.sort((a, b) => {
-            let valA = a[currentSort.key];
-            let valB = b[currentSort.key];
+        // ソート処理（グラフ順序を一貫させるためフィルタ前に適用）
+        processedHoldings.sort((a, b) => {
+            let valA = a[currentSort.key]; let valB = b[currentSort.key];
             if (currentSort.key === 'eval') { valA = a.evalVal; valB = b.evalVal; }
             if (currentSort.key === 'profit') { valA = a.profitPct; valB = b.profitPct; }
-            
-            if (typeof valA === 'string') {
-                return currentSort.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-            }
+            if (typeof valA === 'string') return currentSort.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
             return currentSort.asc ? valA - valB : valB - valA;
         });
 
-        // 明細テーブルの描画
+        // フィルタ処理
+        let displayedHoldings = [...processedHoldings];
+        if (currentFilter) {
+            displayedHoldings = processedHoldings.filter(h => h.cat === currentFilter);
+            document.getElementById('detail-title').innerText = `銘柄明細 (${catConfig[currentFilter].name} 内訳)`;
+            document.getElementById('chart-title').innerText = `アセットアロケーション (${catConfig[currentFilter].name})`;
+            document.getElementById('chart-center-label').innerText = `${catConfig[currentFilter].name} 合計`;
+            document.getElementById('chart-center-val').innerText = '¥' + Math.round(catTotals[currentFilter].val).toLocaleString();
+        } else {
+            document.getElementById('detail-title').innerText = "銘柄明細 (全表示)";
+            document.getElementById('chart-title').innerText = "アセットアロケーション";
+            document.getElementById('chart-center-label').innerText = "評価額合計";
+            document.getElementById('chart-center-val').innerText = '¥' + Math.round(totalVal).toLocaleString();
+        }
+
+        // 3. 【修正版】グラフデータの組み立て（ドリルダウン完全連動）
+        const chartLabels = [];
+        const chartData = [];
+        const chartColors = [];
+
+        if (currentFilter) {
+            // ドリルダウン時：選択されたカテゴリ内の「銘柄別」内訳
+            displayedHoldings.forEach((h, idx) => {
+                chartLabels.push(h.name);
+                chartData.push(h.evalVal);
+                // 飾り色は足さず、カテゴリ色の階調変化だけで表現
+                chartColors.push(getGradatedColor(h.cat, idx, displayedHoldings.length));
+            });
+        } else {
+            // 全体表示時：いつもの「カテゴリ別」比率
+            Object.keys(catConfig).forEach(cat => {
+                const data = catTotals[cat];
+                chartLabels.push(catConfig[cat].name);
+                chartData.push(data.val);
+                chartColors.push(catConfig[cat].color);
+            });
+        }
+        renderDonut(chartLabels, chartData, chartColors);
+
+        // 4. 明細テーブルの描画
         const detailBody = document.getElementById('detail-body');
         detailBody.innerHTML = '';
         
-        filteredHoldings.forEach(h => {
+        displayedHoldings.forEach(h => {
             let trendColor = 'inherit';
-            if (h.profit > 0) trendColor = 'var(--danger)';
-            if (h.profit < 0) trendColor = 'var(--success)';
+            if (h.profit > 0) trendColor = 'var(--trend-plus)';
+            if (h.profit < 0) trendColor = 'var(--trend-minus)';
 
             detailBody.innerHTML += `
                 <tr>
@@ -490,8 +520,8 @@
                         <span style="font-size:11px; color:var(--text-sub);">単価: ¥${h.cost.toLocaleString()}</span>
                     </td>
                     <td style="color:var(--trend-flat); font-size:12px;">
-                        <span style="color:var(--trend-flat);">前日: --</span><br>
-                        <span style="color:var(--trend-flat);">前月: --</span>
+                        <span>前日: --</span><br>
+                        <span>前月: --</span>
                     </td>
                     <td>
                         ¥${Math.round(h.evalVal).toLocaleString()}<br>
@@ -505,8 +535,8 @@
             `;
         });
 
-        // 5. ランキングの生成
-        renderRankings(filteredHoldings);
+        // 5. ランキングの生成（表示されている銘柄群ベースに追従）
+        renderRankings(displayedHoldings);
     }
 
     function renderDonut(labels, data, colors) {
@@ -520,10 +550,10 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    data: isAllZero ? [1,1,1,1,1] : data,
-                    backgroundColor: colors,
+                    data: isAllZero ? [1] : data,
+                    backgroundColor: isAllZero ? ['#e2e8f0'] : colors,
                     borderWidth: 2,
-                    hoverOffset: 3
+                    hoverOffset: isAllZero ? 0 : 3
                 }]
             },
             options: {
@@ -534,12 +564,8 @@
     }
 
     function renderRankings(items) {
-        // 損益率でソートしたランキング用配列
         const ranked = [...items].filter(h => h.profit !== 0);
-        
-        // ベスト3（降順）
         const best = [...ranked].sort((a,b) => b.profitPct - a.profitPct).slice(0, 3);
-        // ワースト3（昇順）
         const worst = [...ranked].sort((a,b) => a.profitPct - b.profitPct).slice(0, 3);
 
         const bestEl = document.getElementById('ranking-best');
@@ -547,18 +573,14 @@
         bestEl.innerHTML = ''; worstEl.innerHTML = '';
 
         best.forEach((h, i) => {
-            bestEl.innerHTML += `<div class="ranking-item"><span>${i+1}. ${h.name}</span><strong style="color:var(--danger)">+${h.profitPct.toFixed(1)}%</strong></div>`;
+            bestEl.innerHTML += `<div class="ranking-item"><span>${i+1}. ${h.name}</span><strong style="color:var(--trend-plus)">+${h.profitPct.toFixed(1)}%</strong></div>`;
         });
         worst.forEach((h, i) => {
-            worstEl.innerHTML += `<div class="ranking-item"><span>${i+1}. ${h.name}</span><strong style="color:var(--success)">${h.profitPct.toFixed(1)}%</strong></div>`;
+            worstEl.innerHTML += `<div class="ranking-item"><span>${i+1}. ${h.name}</span><strong style="color:var(--trend-minus)">${h.profitPct.toFixed(1)}%</strong></div>`;
         });
 
         if(best.length === 0) bestEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
         if(worst.length === 0) worstEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
-    }
-
-    function varColor(varName) {
-        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
     }
 </script>
 </body>
