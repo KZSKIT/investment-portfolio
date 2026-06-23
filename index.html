@@ -309,39 +309,46 @@
         } catch(e) { console.error("ライブレート取得エラー", e); }
     }
 
-function loadHoldings() {
+    // 【修正】データが空の時も確実に15銘柄をロードする仕組み
+    function loadHoldings() {
         const saved = localStorage.getItem('my_portfolio_holdings');
-        if (saved) {
+        // データが存在し、かつ空配列ではない場合のみパース
+        if (saved && saved !== '[]') {
             holdings = JSON.parse(saved);
         } else {
-            holdings = [
-                // 1. 国内株 (jp-stock)
-                { id: 1, cat: 'jp-stock', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', qty: 100, cost: 2500, price: 2850 },
-                { id: 2, cat: 'jp-stock', name: '三菱UFJ FG (8306)', broker: 'SBI証券', qty: 500, cost: 1200, price: 1580 },
-                { id: 3, cat: 'jp-stock', name: 'ソニーグループ (6758)', broker: '楽天証券', qty: 50, cost: 13500, price: 12800 },
-
-                // 2. 米国株 (us-stock) ※1株あたり単価。米ドル建てシミュレーション用
-                { id: 4, cat: 'us-stock', name: 'Apple (AAPL)', broker: 'SBI証券', qty: 15, cost: 180, price: 215 },
-                { id: 5, cat: 'us-stock', name: 'Microsoft (MSFT)', broker: 'SBI証券', qty: 8, cost: 420, price: 445 },
-                { id: 6, cat: 'us-stock', name: 'NVIDIA (NVDA)', broker: 'マネックス証券', qty: 40, cost: 95, price: 125 },
-
-                // 3. 投資信託 (fund)
-                { id: 7, cat: 'fund', name: 'eMAXIS Slim 全世界株式(オール・カントリー)', broker: 'SBI証券', qty: 850000, cost: 1.8, price: 2.45 },
-                { id: 8, cat: 'fund', name: 'eMAXIS Slim 米国株式(S&P500)', broker: 'SBI証券', qty: 500000, cost: 2.1, price: 2.90 },
-                { id: 9, cat: 'fund', name: 'ニッセイ外国株式インデックスファンド', broker: '楽天証券', qty: 300000, cost: 2.4, price: 2.30 },
-
-                // 4. 金 (gold)
-                { id: 10, cat: 'gold', name: '純金積立 (現物ゴールド)', broker: '田中貴金属', qty: 85, cost: 9200, price: 12800 },
-                { id: 11, cat: 'gold', name: 'SPDRゴールド・シェア (1326)', broker: 'SBI証券', qty: 20, cost: 25000, price: 31000 },
-                { id: 12, cat: 'gold', name: '金鉱株ファンド', broker: '楽天証券', qty: 100000, cost: 1.2, price: 1.4 },
-
-                // 5. 暗号資産 (crypto)
-                { id: 13, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.08, cost: 6500000, price: 9650000 },
-                { id: 14, cat: 'crypto', name: 'Ethereum (ETH)', broker: 'Coincheck', qty: 1.5, cost: 420000, price: 530000 },
-                { id: 15, cat: 'crypto', name: 'Ripple (XRP)', broker: 'bitFlyer', qty: 2500, cost: 95, price: 82 }
-            ];
-            localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
+            getInitialSampleData();
         }
+    }
+
+    // 15銘柄のマスターデータ
+    function getInitialSampleData() {
+        holdings = [
+            // 1. 国内株 (jp-stock)
+            { id: 1, cat: 'jp-stock', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', qty: 100, cost: 2500, price: 2850 },
+            { id: 2, cat: 'jp-stock', name: '三菱UFJ FG (8306)', broker: 'SBI証券', qty: 500, cost: 1200, price: 1580 },
+            { id: 3, cat: 'jp-stock', name: 'ソニーグループ (6758)', broker: '楽天証券', qty: 50, cost: 13500, price: 12800 },
+
+            // 2. 米国株 (us-stock)
+            { id: 4, cat: 'us-stock', name: 'Apple (AAPL)', broker: 'SBI証券', qty: 15, cost: 180, price: 215 },
+            { id: 5, cat: 'us-stock', name: 'Microsoft (MSFT)', broker: 'SBI証券', qty: 8, cost: 420, price: 445 },
+            { id: 6, cat: 'us-stock', name: 'NVIDIA (NVDA)', broker: 'マネックス証券', qty: 40, cost: 95, price: 125 },
+
+            // 3. 投資信託 (fund)
+            { id: 7, cat: 'fund', name: 'eMAXIS Slim 全世界株式', broker: 'SBI証券', qty: 850000, cost: 1.8, price: 2.45 },
+            { id: 8, cat: 'fund', name: 'eMAXIS Slim 米国株式(S&P500)', broker: 'SBI証券', qty: 500000, cost: 2.1, price: 2.90 },
+            { id: 9, cat: 'fund', name: 'ニッセイ外国株式インデックス', broker: '楽天証券', qty: 300000, cost: 2.4, price: 2.30 },
+
+            // 4. 金 (gold)
+            { id: 10, cat: 'gold', name: '純金積立 (現物ゴールド)', broker: '田中貴金属', qty: 85, cost: 9200, price: 12800 },
+            { id: 11, cat: 'gold', name: 'SPDRゴールド・シェア (1326)', broker: 'SBI証券', qty: 20, cost: 25000, price: 31000 },
+            { id: 12, cat: 'gold', name: '金鉱株ファンド', broker: '楽天証券', qty: 100000, cost: 1.2, price: 1.4 },
+
+            // 5. 暗号資産 (crypto)
+            { id: 13, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.08, cost: 6500000, price: 9650000 },
+            { id: 14, cat: 'crypto', name: 'Ethereum (ETH)', broker: 'Coincheck', qty: 1.5, cost: 420000, price: 530000 },
+            { id: 15, cat: 'crypto', name: 'Ripple (XRP)', broker: 'bitFlyer', qty: 2500, cost: 95, price: 82 }
+        ];
+        localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
     }
 
     function addTestData() {
@@ -361,10 +368,11 @@ function loadHoldings() {
         renderDashboard();
     }
 
+    // 【修正】完全に初期化して15銘柄を再ロードする安全設計に変更
     function clearTestData() {
-        if(confirm('全てのデータをクリアしますか？')) {
-            holdings = [];
-            localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
+        if(confirm('現在の変更をすべてリセットし、15銘柄のサンプルデータを復元しますか？')) {
+            localStorage.removeItem('my_portfolio_holdings');
+            getInitialSampleData();
             renderDashboard();
         }
     }
@@ -393,15 +401,11 @@ function loadHoldings() {
         renderDashboard();
     }
 
-    // 【新設】固定カテゴリ色をベースに、ノイズのない階調（透明度）のカラーを生成する関数
     function getGradatedColor(cat, index, total) {
         const baseColor = catConfig[cat].color;
         if (total <= 1) return baseColor;
-        
-        // 1.0〜0.3の間でアルファ値を等間隔に落とす（余計な色を足さない）
         const minAlpha = 0.35;
         const alpha = 1.0 - ((1.0 - minAlpha) * (index / (total - 1 || 1)));
-        
         const c = baseColor.replace('#', '');
         const r = parseInt(c.substring(0, 2), 16);
         const g = parseInt(c.substring(2, 4), 16);
@@ -413,7 +417,6 @@ function loadHoldings() {
         let totalVal = 0;
         const catTotals = { 'jp-stock': { val: 0, cost: 0 }, 'us-stock': { val: 0, cost: 0 }, 'fund': { val: 0, cost: 0 }, 'gold': { val: 0, cost: 0 }, 'crypto': { val: 0, cost: 0 } };
 
-        // 評価額算出
         holdings.forEach(h => {
             const isUs = h.cat === 'us-stock';
             const rate = isUs ? 160 : 1; 
@@ -425,7 +428,6 @@ function loadHoldings() {
             totalVal += evalVal;
         });
 
-        // 1. 区分別サマリーテーブルの描画
         const summaryBody = document.getElementById('summary-body');
         summaryBody.innerHTML = '';
         
@@ -459,7 +461,6 @@ function loadHoldings() {
             `;
         });
 
-        // 2. 明細用データの生成・フィルタ・ソート
         let processedHoldings = holdings.map(h => {
             const isUs = h.cat === 'us-stock';
             const rate = isUs ? 160 : 1;
@@ -470,7 +471,6 @@ function loadHoldings() {
             return { ...h, evalVal, profit, profitPct };
         });
 
-        // ソート処理（グラフ順序を一貫させるためフィルタ前に適用）
         processedHoldings.sort((a, b) => {
             let valA = a[currentSort.key]; let valB = b[currentSort.key];
             if (currentSort.key === 'eval') { valA = a.evalVal; valB = b.evalVal; }
@@ -479,7 +479,6 @@ function loadHoldings() {
             return currentSort.asc ? valA - valB : valB - valA;
         });
 
-        // フィルタ処理
         let displayedHoldings = [...processedHoldings];
         if (currentFilter) {
             displayedHoldings = processedHoldings.filter(h => h.cat === currentFilter);
@@ -494,21 +493,17 @@ function loadHoldings() {
             document.getElementById('chart-center-val').innerText = '¥' + Math.round(totalVal).toLocaleString();
         }
 
-        // 3. 【修正版】グラフデータの組み立て（ドリルダウン完全連動）
         const chartLabels = [];
         const chartData = [];
         const chartColors = [];
 
         if (currentFilter) {
-            // ドリルダウン時：選択されたカテゴリ内の「銘柄別」内訳
             displayedHoldings.forEach((h, idx) => {
                 chartLabels.push(h.name);
                 chartData.push(h.evalVal);
-                // 飾り色は足さず、カテゴリ色の階調変化だけで表現
                 chartColors.push(getGradatedColor(h.cat, idx, displayedHoldings.length));
             });
         } else {
-            // 全体表示時：いつもの「カテゴリ別」比率
             Object.keys(catConfig).forEach(cat => {
                 const data = catTotals[cat];
                 chartLabels.push(catConfig[cat].name);
@@ -518,7 +513,6 @@ function loadHoldings() {
         }
         renderDonut(chartLabels, chartData, chartColors);
 
-        // 4. 明細テーブルの描画
         const detailBody = document.getElementById('detail-body');
         detailBody.innerHTML = '';
         
@@ -553,7 +547,6 @@ function loadHoldings() {
             `;
         });
 
-        // 5. ランキングの生成（表示されている銘柄群ベースに追従）
         renderRankings(displayedHoldings);
     }
 
