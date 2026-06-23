@@ -1,0 +1,32 @@
+name: 毎日株価自動更新
+
+on:
+  schedule:
+    # 毎日日本時間の夜23:00（UTC 14:00）に自動実行
+    - cron: '0 14 * * *'
+  workflow_dispatch: # 手動でいつでも実行できるボタンを出す設定
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 取得した prices.json をリポジトリに書き戻す権限
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js のセットアップ (依存ゼロ)
+        uses: actions/setup-node@v4
+        with:
+          node-style: 'global'
+
+      - name: 株価取得スクリプトの実行
+        run: node update-prices.mjs
+
+      - name: 変更があった場合のみ GitHub へ自動コミット
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add prices.json
+          git diff --cached --quiet || (git commit -m "🤖 株価自動更新 (prices.json)" && git push)
