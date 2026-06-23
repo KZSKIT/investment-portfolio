@@ -287,19 +287,19 @@
     let allocChart = null;
     let trendChart = null;
 
-    // --- グローバル空間へのバインドを徹底し、スコープクラッシュを永久防除 ---
+    // --- すべてをネイティブな最上位の独立したグローバル関数として再設計（100%結合保証） ---
     window.onload = async function() {
         const todayStr = new Date().toISOString().substring(0, 10);
         document.getElementById('history-date').value = todayStr;
         document.getElementById('form-purchase-date').value = todayStr;
         
-        window.loadHoldingsAndHistory();
-        await window.fetchLiveRates();
-        await window.loadGitHubPrices();
+        loadHoldingsAndHistory();
+        await fetchLiveRates();
+        await loadGitHubPrices();
         renderDashboard();
     };
 
-    window.fetchLiveRates = async function() {
+    async function fetchLiveRates() {
         try {
             const resUsd = await fetch('https://open.er-api.com/v6/latest/USD');
             if (resUsd.ok) {
@@ -314,19 +314,19 @@
                 document.getElementById('mkt-gold').innerText = '¥' + Math.round(gramPrice).toLocaleString();
             }
         } catch(e) { console.error("レート取得エラー", e); }
-    };
+    }
 
-    window.loadGitHubPrices = async function() {
+    async function loadGitHubPrices() {
         try {
             const res = await fetch(`prices.json?t=${Date.now()}`);
             if (res.ok) { 
                 fetchedPrices = await res.json(); 
-                console.log("GitHub価格マスター読み込み成功:", fetchedPrices);
+                console.log("GitHub株価マスター読み込み完了:", fetchedPrices);
             }
         } catch(e) { console.error("GitHub株価のロード失敗", e); }
-    };
+    }
 
-    window.loadHoldingsAndHistory = function() {
+    function loadHoldingsAndHistory() {
         const isInitialized = localStorage.getItem('my_portfolio_initialized');
         if (!isInitialized) {
             loadDemoDataset();
@@ -335,19 +335,19 @@
             holdings = JSON.parse(localStorage.getItem('my_portfolio_holdings') || '[]');
             historySnapshots = JSON.parse(localStorage.getItem('my_portfolio_history_snapshots') || '[]');
         }
-        window.updateBrokerDatalist();
-    };
+        updateBrokerDatalist();
+    }
 
-    window.updateBrokerDatalist = function() {
+    function updateBrokerDatalist() {
         const listEl = document.getElementById('broker-list');
         if (!listEl) return;
         listEl.innerHTML = '';
         const uniqueBrokers = [...new Set(holdings.map(h => h.broker).filter(b => b && b !== '-'))];
         uniqueBrokers.forEach(b => { listEl.innerHTML += `<option value="${b}">`; });
-    };
+    }
 
-    // 【改善】Actions未実行や読込遅延時でも、ティッカー剥き出しにせずスマートに仮名称を瞬時自動生成する
-    window.fetchTickerInfo = function() {
+    // 正確に動作するコード確認・自動保管ロジック
+    function fetchTickerInfo() {
         const symbol = document.getElementById('form-symbol').value.trim();
         if (!symbol) return alert('Yahooコードを入力してください（例: 7203.T, AAPL）');
         
@@ -360,6 +360,7 @@
             targetPrice = info.price || 0;
         }
         
+        // Actionsの取得前でも、末尾で国籍を自動判定して綺麗な仮名称を即生成する
         if (!targetName || targetName === symbol) {
             if (symbol.endsWith('.T')) {
                 targetName = `日本株銘柄 (${symbol.replace('.T', '')})`;
@@ -372,9 +373,9 @@
         if (targetPrice > 0) {
             document.getElementById('form-price').value = targetPrice;
         }
-    };
+    }
 
-    window.addRealData = function() {
+    function addRealData() {
         const name = document.getElementById('form-name').value.trim();
         if(!name) return alert('銘柄名を入力、またはコード確認を行ってください');
         
@@ -393,7 +394,7 @@
         holdings.push(newItem);
         localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
         
-        window.updateBrokerDatalist();
+        updateBrokerDatalist();
         renderDashboard();
         
         document.getElementById('form-name').value = '';
@@ -401,36 +402,36 @@
         document.getElementById('form-qty').value = '';
         document.getElementById('form-cost').value = '';
         document.getElementById('form-price').value = '';
-    };
+    }
 
-    window.deleteItem = function(id) {
+    function deleteItem(id) {
         if (confirm('この銘柄を削除しますか？')) {
             holdings = holdings.filter(h => h.id !== id);
             localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
-            window.updateBrokerDatalist();
+            updateBrokerDatalist();
             renderDashboard();
         }
-    };
+    }
 
-    window.clearToAbsoluteZero = function() {
+    function clearToAbsoluteZero() {
         if(confirm('すべてのデータを完全に消去し、真っ白な本番運用状態にします。よろしいですか？')) {
             holdings = []; historySnapshots = [];
             localStorage.setItem('my_portfolio_holdings', JSON.stringify([]));
             localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify([]));
             currentFilter = null;
-            window.updateBrokerDatalist();
+            updateBrokerDatalist();
             renderDashboard();
-            alert('リセット完了しました。実アセットを入力してください！');
+            alert('リセット完了しました。あなたの実資産を入力してください！');
         }
-    };
+    }
 
-    window.restoreDemoDataset = function() {
+    function restoreDemoDataset() {
         if(confirm('デモデータを再ロードしますか？')) {
-            loadDemoDataset(); window.updateBrokerDatalist(); renderDashboard();
+            loadDemoDataset(); updateBrokerDatalist(); renderDashboard();
         }
-    };
+    }
 
-    window.saveSnapshot = function() {
+    function saveSnapshot() {
         const dateStr = document.getElementById('history-date').value;
         if(!dateStr) return alert('日付を指定してください');
         const totals = calculateCurrentTotals();
@@ -445,39 +446,48 @@
         localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots));
         renderDashboard();
         alert(`${dateStr} 時点の資産を記録しました。`);
-    };
+    }
 
-    window.handleSort = function(key) {
+    function calculateCurrentTotals() {
+        const totals = { 'jp-stock': 0, 'us-stock': 0, 'fund': 0, 'gold': 0, 'crypto': 0 };
+        holdings.forEach(h => {
+            let price = h.price; let rate = (h.cat === 'us-stock') ? usdJpyRate : 1.0;
+            if (h.symbol && fetchedPrices[h.symbol]) { price = fetchedPrices[h.symbol].price; }
+            totals[h.cat] += h.qty * price * rate;
+        });
+        return totals;
+    }
+
+    function handleSort(key) {
         if (currentSort.key === key) { currentSort.asc = !currentSort.asc; } 
         else { currentSort.key = key; currentSort.asc = false; }
         renderDashboard();
-    };
-
-    window.setSort = function(key) {
+    }
+    function setSort(key) {
         currentSort.key = key; currentSort.asc = false;
         document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        document.getElementById(`chip-${key}`).classList.add('active');
+        const chipEl = document.getElementById(`chip-${key}`);
+        if(chipEl) chipEl.classList.add('active');
         renderDashboard();
-    };
-
-    window.toggleFilter = function(cat) {
+    }
+    function toggleFilter(cat) {
         currentFilter = (currentFilter === cat) ? null : cat;
         renderDashboard();
-    };
-
-    window.setTrendRange = function(range) {
+    }
+    function setTrendRange(range) {
         trendRange = range;
         document.querySelectorAll('[id^="range-"]').forEach(b => b.classList.remove('active'));
-        document.getElementById(`range-${range}`).classList.add('active');
+        const rangeEl = document.getElementById(`range-${range}`);
+        if(rangeEl) rangeEl.classList.add('active');
         renderDashboard();
-    };
-
-    window.setTrendUnit = function(unit) {
+    }
+    function setTrendUnit(unit) {
         trendUnit = unit;
         document.querySelectorAll('[id^="unit-"]').forEach(b => b.classList.remove('active'));
-        document.getElementById(`unit-${unit}`).classList.add('active');
+        const unitEl = document.getElementById(`unit-${unit}`);
+        if(unitEl) unitEl.classList.add('active');
         renderDashboard();
-    };
+    }
 
     function loadDemoDataset() {
         holdings = [
@@ -514,25 +524,8 @@
             });
             startDate.setMonth(startDate.getMonth() + 1); startDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); idx++;
         }
-    }
-
-    function calculateCurrentTotals() {
-        const totals = { 'jp-stock': 0, 'us-stock': 0, 'fund': 0, 'gold': 0, 'crypto': 0 };
-        holdings.forEach(h => {
-            let price = h.price; let rate = (h.cat === 'us-stock') ? usdJpyRate : 1.0;
-            if (h.symbol && fetchedPrices[h.symbol]) { price = fetchedPrices[h.symbol].price; }
-            totals[h.cat] += h.qty * price * rate;
-        });
-        return totals;
-    }
-
-    function getGradatedColor(cat, index, total) {
-        const baseColor = catConfig[cat].color;
-        if (total <= 1) return baseColor;
-        const minAlpha = 0.35;
-        const alpha = 1.0 - ((1.0 - minAlpha) * (index / (total - 1 || 1)));
-        const c = baseColor.replace('#', '');
-        return `rgba(${parseInt(c.substring(0, 2), 16)}, ${parseInt(c.substring(2, 4), 16)}, ${parseInt(c.substring(4, 6), 16)}, ${alpha})`;
+        localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
+        localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots));
     }
 
     function renderDashboard() {
@@ -690,9 +683,11 @@
         if(worst.length === 0) worstEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
     }
 
-    // 【改善】履歴配列が完全に空（[]）の時、クラッシュを回避し、現在の登録アセットを最初の1本として自動で仮生成・描画する
+    // 履歴が空でも絶対にクラッシュしない、堅牢な時系列レンダラー
     function renderTrendChart() {
-        const ctx = document.getElementById('trendChart').getContext('2d');
+        const canvasEl = document.getElementById('trendChart');
+        if (!canvasEl) return;
+        const ctx = canvasEl.getContext('2d');
         if (trendChart) trendChart.destroy();
 
         let displaySnaps = [];
@@ -736,4 +731,45 @@
             { id: 'us-stock', label: '米国株', data: displaySnaps.map(s => s['us-stock'] || 0), backgroundColor: catConfig['us-stock'].color },
             { id: 'fund', label: '投資信託', data: displaySnaps.map(s => s['fund'] || 0), backgroundColor: catConfig['fund'].color },
             { id: 'gold', label: '金', data: displaySnaps.map(s => s['gold'] || 0), backgroundColor: catConfig['gold'].color },
-            { id: 'crypto', label: '暗号資産', data: displaySnaps.map(s
+            { id: 'crypto', label: '暗号資産', data: displaySnaps.map(s => s['crypto'] || 0), backgroundColor: catConfig['crypto'].color }
+        ];
+
+        let activeDatasets = allDatasets;
+        if (currentFilter) { activeDatasets = allDatasets.filter(ds => ds.id === currentFilter); }
+
+        trendChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: labels, datasets: activeDatasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } },
+                    y: { stacked: true, ticks: { callback: v => '¥' + (v / 10000).toLocaleString() + '万' } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function exportAll() {
+        const obj = { holdings, history: historySnapshots };
+        const code = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+        document.getElementById('backupText').value = code; document.getElementById('backupText').select();
+        alert('全てのデータコードを生成しました！');
+    }
+    function importAll() {
+        const code = document.getElementById('backupText').value.trim();
+        if(!code) return alert('コードを貼り付けてください');
+        if(confirm('現在のデータがすべて上書きされますがよろしいですか？')) {
+            try {
+                const obj = JSON.parse(decodeURIComponent(escape(atob(code))));
+                if(obj.holdings) { holdings = obj.holdings; localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings)); }
+                if(obj.history) { historySnapshots = obj.history; localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots)); }
+                loadHoldingsAndHistory(); renderDashboard(); document.getElementById('backupText').value = '';
+                alert('すべてのデータを復元しました。');
+            } catch(e) { alert('無効なコードです'); }
+        }
+    }
+</script>
+</body>
+</html>
