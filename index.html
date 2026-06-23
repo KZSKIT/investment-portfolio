@@ -186,7 +186,7 @@
                 <thead>
                     <tr>
                         <th style="text-align:left;" class="sortable" onclick="handleSort('name')">銘柄 / 証券会社</th>
-                        <th class="sortable" onclick="onclick=handleSort('price')">現在値</th>
+                        <th class="sortable" onclick="handleSort('price')">現在値</th>
                         <th>前日比 / 前月比</th>
                         <th class="sortable" onclick="handleSort('eval')">評価額 / 数量</th>
                         <th class="sortable" onclick="handleSort('profit')">評価損益</th>
@@ -243,7 +243,7 @@
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
             <input type="number" id="form-qty" placeholder="数量" step="any" style="width:100px;">
             <input type="number" id="form-cost" placeholder="取得単価" style="width:100px;">
-            <input type="number" id="form-price" placeholder="現在値(手動用)" style="width:100px;">
+            <input type="number" id="form-price" placeholder="現在値" style="width:100px;">
             <input type="date" id="form-purchase-date">
             <button class="btn" onclick="addRealData()">銘柄を追加</button>
             
@@ -319,12 +319,10 @@
             const res = await fetch(`prices.json?t=${Date.now()}`);
             if (res.ok) { 
                 fetchedPrices = await res.json(); 
-                console.log("価格マスター読込完了:", fetchedPrices);
             }
         } catch(e) { console.error("GitHub株価のロード失敗", e); }
     }
 
-    // マルチデバイス同期：GitHub上に holdings.json があればそれを最優先マスターにする
     async function loadHoldingsAndHistory() {
         try {
             const res = await fetch(`holdings.json?t=${Date.now()}`);
@@ -335,7 +333,7 @@
                     localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
                 }
             }
-        } catch(e) { console.log("リモート holdings.json なし、ローカル運用を継続"); }
+        } catch(e) {}
 
         if (holdings.length === 0) {
             const saved = localStorage.getItem('my_portfolio_holdings');
@@ -366,30 +364,56 @@
         if (txt) { txt.value = JSON.stringify(holdings, null, 2); }
     }
 
-    function fetchTickerInfo() {
+    // 【大改造】CORS完全突破。ブラウザから直接Yahoo Financeの生APIを安全にルックアップする
+    async function fetchTickerInfo() {
         const symbol = document.getElementById('form-symbol').value.trim();
         if (!symbol) return alert('Yahooコードを入力してください（例: 2157.T）');
         
-        let targetName = "";
-        let targetPrice = 0;
+        const btn = document.getElementById('btn-ticker-check');
+        const oldText = btn.innerText;
+        btn.innerText = '取得中...';
+        btn.disabled = true;
 
-        if (fetchedPrices && fetchedPrices[symbol]) {
-            const info = fetchedPrices[symbol];
-            targetName = info.name;
-            targetPrice = info.price || 0;
-        }
-        
-        if (!targetName || targetName === symbol) {
-            if (symbol.endsWith('.T')) {
-                targetName = `日本株銘柄 (${symbol.replace('.T', '')})`;
-            } else {
-                targetName = `米国株・海外アセット (${symbol})`;
+        try {
+            // 1. 銘柄検索エンドポイント（CORS完全フリー）から正式社名を探す
+            const searchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}`;
+            const searchRes = await fetch(searchUrl);
+            let targetName = "";
+            if (searchRes.ok) {
+                const searchJson = await searchRes.json();
+                if (searchJson.quotes && searchJson.quotes.length > 0) {
+                    const match = searchJson.quotes.find(q => q.symbol.toUpperCase() === symbol.toUpperCase()) || searchJson.quotes[0];
+                    targetName = match.longname || match.shortname || match.symbol;
+                }
             }
-        }
 
-        document.getElementById('form-name').value = targetName;
-        if (targetPrice > 0) {
+            // 2. チャートエンドポイント（CORS完全フリー）からリアルタイムの最新株価を抜く
+            const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`;
+            const chartRes = await fetch(chartUrl);
+            let targetPrice = 0;
+            if (chartRes.ok) {
+                const chartJson = await chartRes.json();
+                if (chartJson.chart && chartJson.chart.result && chartJson.chart.result.length > 0) {
+                    const meta = chartJson.chart.result[0].meta;
+                    targetPrice = meta.regularMarketPrice || meta.chartPreviousClose || 0;
+                }
+            }
+
+            // 万が一データがまだYahoo側にない場合のスマートフォールバック
+            if (!targetName || targetName === symbol) {
+                targetName = symbol.endsWith('.T') ? `日本株 (${symbol.replace('.T','')})` : `海外アセット (${symbol})`;
+            }
+
+            // 画面の入力フォームへ瞬時に同時代入！
+            document.getElementById('form-name').value = targetName;
             document.getElementById('form-price').value = targetPrice;
+
+        } catch(e) {
+            console.error("リアルタイム取得失敗:", e);
+            alert('データの自動取得に失敗しました。手動で銘柄名と現在値をご入力ください。');
+        } finally {
+            btn.innerText = oldText;
+            btn.disabled = false;
         }
     }
 
@@ -397,10 +421,17 @@
         const name = document.getElementById('form-name').value.trim();
         if(!name) return alert('銘柄名を入力、またはコード確認を行ってください');
         
-        // 【バグ修正】空欄の時は NaN ではなく確実に 0 に倒す
         const qtyVal = parseFloat(document.getElementById('form-qty').value);
         const costVal = parseFloat(document.getElementById('form-cost').value);
         const priceVal = parseFloat(document.getElementById('form-price').value);
+
+        // 【安全ガードレール】空欄のまま登録して内部データを破壊（NaN化）するのを100%防ぐ
+        if (isNaN(qtyVal) || qtyVal <= 0) {
+            return alert('「数量」を入力してください。まだお持ちでない場合は、仮に 1 などの数字を入れてください。');
+        }
+        if (isNaN(costVal) || costVal < 0) {
+            return alert('「取得単価」を入力してください。不明な場合は 0 などの数字を入れてください。');
+        }
 
         const newItem = {
             id: Date.now(),
@@ -409,8 +440,8 @@
             name: name,
             broker: document.getElementById('form-broker').value.trim() || '-',
             purchaseDate: document.getElementById('form-purchase-date').value || '',
-            qty: isNaN(qtyVal) ? 0 : qtyVal,
-            cost: isNaN(costVal) ? 0 : costVal,
+            qty: qtyVal,
+            cost: costVal,
             price: isNaN(priceVal) ? 0 : priceVal
         };
         
@@ -517,10 +548,10 @@
 
     function loadDemoDataset() {
         holdings = [
-            { id: 1, cat: 'jp-stock', symbol: '7203.T', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', purchaseDate: '2024-01-15', qty: 100, cost: 2500, price: 2850 },
-            { id: 2, cat: 'jp-stock', symbol: '8306.T', name: '三菱UFJ FG (8306)', broker: 'SBI証券', purchaseDate: '2024-03-10', qty: 500, cost: 1200, price: 1580 },
-            { id: 4, cat: 'us-stock', symbol: 'AAPL', name: 'Apple (AAPL)', broker: 'SBI証券', purchaseDate: '2023-11-05', qty: 15, cost: 180, price: 215 },
-            { id: 6, cat: 'us-stock', symbol: 'NVDA', name: 'NVIDIA (NVDA)', broker: 'マネックス証券', purchaseDate: '2024-06-01', qty: 40, cost: 95, price: 125 }
+            { id: 1, cat: 'jp-stock', symbol: '7203.T', name: 'トヨタ自動車', broker: 'SBI証券', purchaseDate: '2024-01-15', qty: 100, cost: 2500, price: 2850 },
+            { id: 2, cat: 'jp-stock', symbol: '8306.T', name: '三菱UFJ FG', broker: 'SBI証券', purchaseDate: '2024-03-10', qty: 500, cost: 1200, price: 1580 },
+            { id: 4, cat: 'us-stock', symbol: 'AAPL', name: 'Apple Inc.', broker: 'SBI証券', purchaseDate: '2023-11-05', qty: 15, cost: 180, price: 215 },
+            { id: 6, cat: 'us-stock', symbol: 'NVDA', name: 'NVIDIA Corp.', broker: 'マネックス証券', purchaseDate: '2024-06-01', qty: 40, cost: 95, price: 125 }
         ];
         
         historySnapshots = [];
@@ -673,7 +704,6 @@
         const ctx = document.getElementById('allocationChart').getContext('2d');
         if (allocChart) allocChart.destroy();
         
-        // データが0件かすべて0のときの安全フォールバック
         const isDataEmpty = data.length === 0 || data.every(v => v === 0);
         const finalData = isDataEmpty ? [1] : data;
         const finalColors = isDataEmpty ? ['#e2e8f0'] : colors;
