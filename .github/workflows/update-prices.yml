@@ -19,7 +19,7 @@ jobs:
       - name: Node.js のセットアップ (依存ゼロ)
         uses: actions/setup-node@v4
         with:
-          node-style: 'global'
+          node-version: '22' # 安定バージョンのNode.jsを指定して非推奨警告を回避
 
       - name: 株価取得スクリプトの実行
         run: node update-prices.mjs
