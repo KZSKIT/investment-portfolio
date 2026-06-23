@@ -143,16 +143,9 @@
 <div class="container">
     <div class="card">
         <div class="controls-row">
-            <h2 id="trend-title">資産推移</h2>
-            <div style="display:flex; gap:10px;">
-                <div class="btn-group">
-                    <button class="btn-toggle active" id="range-all" onclick="setTrendRange('all')">全期間</button>
-                    <button class="btn-toggle" id="range-1y" onclick="setTrendRange('1y')">1年</button>
-                    <button class="btn-toggle" id="range-3y" onclick="setTrendRange('3y')">3年</button>
-                </div>
-                <div class="btn-group">
-                    <button class="btn-toggle active" id="unit-monthly" onclick="setTrendUnit('monthly')">月次</button>
-                    <button class="btn-toggle" id="unit-yearly" onclick="setTrendUnit('yearly')">年次</button>
+            <h2 id="trend-title">資産推移 (過去1年・月次自動集計)</h2>
+            <div style="display:none;"> <div class="btn-group">
+                    <button class="btn-toggle active" id="range-all">全期間</button>
                 </div>
             </div>
         </div>
@@ -225,7 +218,7 @@
     </div>
 
     <div class="card dev-panel">
-        <h2>データ管理（実データ登録 ＆ 日次スナップショット履歴登録）</h2>
+        <h2>データ管理（保有資産マスターデータ登録）</h2>
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px;">
             <select id="form-cat">
                 <option value="jp-stock">国内株</option>
@@ -235,8 +228,8 @@
                 <option value="crypto">暗号資産</option>
             </select>
             <input type="text" id="form-symbol" placeholder="Yahooコード (例: 2157.T)">
-            <button type="button" class="btn-secondary" id="btn-ticker-check" onclick="fetchTickerInfo()">コード確認</button>
-            <input type="text" id="form-name" placeholder="銘柄名" style="width:250px;">
+            <button type="button" class="btn-secondary" id="btn-ticker-check" onclick="fetchTickerInfo()">既存チェック</button>
+            <input type="text" id="form-name" placeholder="銘柄名（手入力してください）" style="width:250px;">
             <input type="text" id="form-broker" placeholder="証券会社" list="broker-list">
             <datalist id="broker-list"></datalist>
         </div>
@@ -246,11 +239,6 @@
             <input type="number" id="form-price" placeholder="現在値" style="width:100px;">
             <input type="date" id="form-purchase-date">
             <button class="btn" onclick="addRealData()">銘柄を追加</button>
-            
-            <div style="border-left:1px solid var(--border-color); padding-left:10px; display:flex; gap:5px; align-items:center;">
-                <input type="date" id="history-date">
-                <button class="btn btn-secondary" style="background:var(--header-bg);" onclick="saveSnapshot()">この日付で推移に記録</button>
-            </div>
         </div>
         
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--border-color);">
@@ -274,21 +262,17 @@
     };
 
     let holdings = [];
-    let historySnapshots = []; 
     let fetchedPrices = {}; 
     let usdJpyRate = 160.0; 
 
     let currentFilter = null; 
     let currentSort = { key: 'eval', asc: false };
-    let trendRange = 'all'; 
-    let trendUnit = 'monthly';
 
     let allocChart = null;
     let trendChart = null;
 
     window.onload = async function() {
         const todayStr = new Date().toISOString().substring(0, 10);
-        document.getElementById('history-date').value = todayStr;
         document.getElementById('form-purchase-date').value = todayStr;
         
         await loadHoldingsAndHistory();
@@ -345,8 +329,6 @@
                 localStorage.setItem('my_portfolio_initialized', 'true');
             }
         }
-
-        historySnapshots = JSON.parse(localStorage.getItem('my_portfolio_history_snapshots') || '[]');
         updateBrokerDatalist();
         updateSyncTextArea();
     }
@@ -364,67 +346,41 @@
         if (txt) { txt.value = JSON.stringify(holdings, null, 2); }
     }
 
-    // 【非同期GitOpsモデル】CORS制限を完全回避。ローカルキャッシュを参照し、無ければ次回のCIに委ねる
+    // CORS制限を完全回避。ロード済みの prices.json 内に存在するデータのみ瞬時補完
     async function fetchTickerInfo() {
         const symbol = document.getElementById('form-symbol').value.trim().toUpperCase();
         if (!symbol) return alert('Yahooコードを入力してください（例: 2157.T）');
         
-        const btn = document.getElementById('btn-ticker-check');
-        const oldText = btn.innerText;
-        btn.innerText = '検索中...';
-        btn.disabled = true;
-
-        try {
-            // 1. すでに GitHub Actions（prices.json）側に集約済みのキャッシュがあるか確認
-            if (fetchedPrices && fetchedPrices[symbol]) {
-                const cached = fetchedPrices[symbol];
-                
-                // フォームへ瞬時に同時代入
-                document.getElementById('form-name').value = cached.name || symbol;
-                document.getElementById('form-price').value = cached.price || 0;
-                
-                alert(`✓ 登録済みデータから取得しました：\n銘柄名: ${cached.name}\n現在値: ¥${Math.round(cached.price).toLocaleString()}`);
-            } 
-            // 2. 初めて登録する銘柄（未キャッシュ）の場合
-            else {
-                // 仮の名称を生成
-                const fallbackName = symbol.endsWith('.T') ? `日本株銘柄 (${symbol.replace('.T','')})` : `海外アセット (${symbol})`;
-                
-                // フォームへ仮の値を代入（現在値は0、またはユーザーが手入力可能に）
-                document.getElementById('form-name').value = fallbackName;
-                document.getElementById('form-price').value = 0;
-
-                alert(`💡 新規銘柄（未キャッシュ）として受け付けました。\n\n銘柄名には仮で「${fallbackName}」をセットしています。\nこのまま数量・取得単価を入力して追加し、マスターデータを holdings.json にコミットしてください。次回の自動更新（CI）実行時に、GitHub Actionsが正式社名と正確な株価を自動集約します。`);
-            }
-        } catch(e) {
-            console.error("判定エラー:", e);
-            alert('処理中にエラーが発生しました。手動でご入力ください。');
-        } finally {
-            btn.innerText = oldText;
-            btn.disabled = false;
+        if (fetchedPrices && fetchedPrices[symbol]) {
+            const cached = fetchedPrices[symbol];
+            document.getElementById('form-name').value = cached.name || symbol;
+            document.getElementById('form-price').value = cached.price || 0;
+            alert(`✓ prices.jsonにキャッシュが存在します。自動補完しました。\n銘柄名: ${cached.name}`);
+        } else {
+            const fallbackName = symbol.endsWith('.T') ? `日本株 (${symbol.replace('.T','')})` : `海外アセット (${symbol})`;
+            document.getElementById('form-name').value = fallbackName;
+            document.getElementById('form-price').value = 0;
+            alert(`💡 新規銘柄です。\n名称欄に仮の名前「${fallbackName}」を入力しました。必要に応じて書き換えて追加してください。\nコミット後にCI(GitHub Actions)が回ると、次回から自動で正式名称にアップデートされます。`);
         }
     }
 
     function addRealData() {
-        const name = document.getElementById('form-name').value.trim();
-        if(!name) return alert('銘柄名を入力、またはコード確認を行ってください');
+        const symbol = document.getElementById('form-symbol').value.trim().toUpperCase();
+        let name = document.getElementById('form-name').value.trim();
+        if(!name && symbol) name = symbol;
+        if(!name) return alert('銘柄名またはYahooコードを入力してください');
         
         const qtyVal = parseFloat(document.getElementById('form-qty').value);
         const costVal = parseFloat(document.getElementById('form-cost').value);
         const priceVal = parseFloat(document.getElementById('form-price').value);
 
-        // 【安全ガードレール】空欄のまま登録して内部データを破壊（NaN化）するのを100%防ぐ
-        if (isNaN(qtyVal) || qtyVal <= 0) {
-            return alert('「数量」を入力してください。まだお持ちでない場合は、仮に 1 などの数字を入れてください。');
-        }
-        if (isNaN(costVal) || costVal < 0) {
-            return alert('「取得単価」を入力してください。不明な場合は 0 などの数字を入れてください。');
-        }
+        if (isNaN(qtyVal) || qtyVal <= 0) return alert('有効な「数量」を入力してください。');
+        if (isNaN(costVal) || costVal < 0) return alert('有効な「取得単価」を入力してください。');
 
         const newItem = {
             id: Date.now(),
             cat: document.getElementById('form-cat').value,
-            symbol: document.getElementById('form-symbol').value.trim().toUpperCase(), // 大文字に統一して整合性を担保
+            symbol: symbol,
             name: name,
             broker: document.getElementById('form-broker').value.trim() || '-',
             purchaseDate: document.getElementById('form-purchase-date').value || '',
@@ -459,9 +415,8 @@
 
     function clearToAbsoluteZero() {
         if(confirm('すべてのデータを完全に消去し、真っ白な本番運用状態にします。よろしいですか？')) {
-            holdings = []; historySnapshots = [];
+            holdings = [];
             localStorage.setItem('my_portfolio_holdings', JSON.stringify([]));
-            localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify([]));
             currentFilter = null;
             updateBrokerDatalist();
             updateSyncTextArea();
@@ -474,33 +429,6 @@
         if(confirm('デモデータを再ロードしますか？')) {
             loadDemoDataset(); updateBrokerDatalist(); updateSyncTextArea(); renderDashboard();
         }
-    }
-
-    function saveSnapshot() {
-        const dateStr = document.getElementById('history-date').value;
-        if(!dateStr) return alert('日付を指定してください');
-        const totals = calculateCurrentTotals();
-        const existingIdx = historySnapshots.findIndex(s => s.date === dateStr);
-        const snap = {
-            date: dateStr, 'jp-stock': totals['jp-stock'], 'us-stock': totals['us-stock'],
-            'fund': totals['fund'], 'gold': totals['gold'], 'crypto': totals['crypto']
-        };
-        if(existingIdx >= 0) { historySnapshots[existingIdx] = snap; }
-        else { historySnapshots.push(snap); }
-        historySnapshots.sort((a,b) => a.date.localeCompare(b.date));
-        localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots));
-        renderDashboard();
-        alert(`${dateStr} 時点の資産を記録しました。`);
-    }
-
-    function calculateCurrentTotals() {
-        const totals = { 'jp-stock': 0, 'us-stock': 0, 'fund': 0, 'gold': 0, 'crypto': 0 };
-        holdings.forEach(h => {
-            let price = h.price; let rate = (h.cat === 'us-stock') ? usdJpyRate : 1.0;
-            if (h.symbol && fetchedPrices[h.symbol]) { price = fetchedPrices[h.symbol].price; }
-            totals[h.cat] += h.qty * price * rate;
-        });
-        return totals;
     }
 
     function handleSort(key) {
@@ -519,49 +447,47 @@
         currentFilter = (currentFilter === cat) ? null : cat;
         renderDashboard();
     }
-    function setTrendRange(range) {
-        trendRange = range;
-        document.querySelectorAll('[id^="range-"]').forEach(b => b.classList.remove('active'));
-        const rangeEl = document.getElementById(`range-${range}`);
-        if(rangeEl) rangeEl.classList.add('active');
-        renderDashboard();
-    }
-    function setTrendUnit(unit) {
-        trendUnit = unit;
-        document.querySelectorAll('[id^="unit-"]').forEach(b => b.classList.remove('active'));
-        const unitEl = document.getElementById(`unit-${unit}`);
-        if(unitEl) unitEl.classList.add('active');
-        renderDashboard();
-    }
 
     function loadDemoDataset() {
         holdings = [
-            { id: 1, cat: 'jp-stock', symbol: '7203.T', name: 'トヨタ自動車', broker: 'SBI証券', purchaseDate: '2024-01-15', qty: 100, cost: 2500, price: 2850 },
-            { id: 2, cat: 'jp-stock', symbol: '8306.T', name: '三菱UFJ FG', broker: 'SBI証券', purchaseDate: '2024-03-10', qty: 500, cost: 1200, price: 1580 },
-            { id: 4, cat: 'us-stock', symbol: 'AAPL', name: 'Apple Inc.', broker: 'SBI証券', purchaseDate: '2023-11-05', qty: 15, cost: 180, price: 215 },
-            { id: 6, cat: 'us-stock', symbol: 'NVDA', name: 'NVIDIA Corp.', broker: 'マネックス証券', purchaseDate: '2024-06-01', qty: 40, cost: 95, price: 125 }
+            { id: 1, cat: 'jp-stock', symbol: '7203.T', name: 'トヨタ自動車', broker: 'SBI証券', purchaseDate: '2025-07-15', qty: 100, cost: 2500, price: 2850 },
+            { id: 2, cat: 'jp-stock', symbol: '8306.T', name: '三菱UFJ FG', broker: 'SBI証券', purchaseDate: '2025-09-10', qty: 500, cost: 1200, price: 1580 },
+            { id: 4, cat: 'us-stock', symbol: 'AAPL', name: 'Apple Inc.', broker: 'SBI証券', purchaseDate: '2025-06-05', qty: 15, cost: 180, price: 215 },
+            { id: 6, cat: 'us-stock', symbol: 'NVDA', name: 'NVIDIA Corp.', broker: 'マネックス証券', purchaseDate: '2025-11-01', qty: 40, cost: 95, price: 125 }
         ];
-        
-        historySnapshots = [];
-        let startDate = new Date(2025, 0, 31); const endDate = new Date(2026, 5, 23);
-        const baseValues = { 'jp-stock': 900000, 'us-stock': 850000, 'fund': 200000, 'gold': 100000, 'crypto': 50000 };
-        let idx = 0;
-        while (startDate <= endDate) {
-            historySnapshots.push({
-                date: `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`,
-                'jp-stock': Math.round(baseValues['jp-stock'] * (1.0 + idx * 0.02)),
-                'us-stock': Math.round(baseValues['us-stock'] * (1.0 + idx * 0.03)),
-                'fund':     baseValues['fund'], 'gold': baseValues['gold'], 'crypto': baseValues['crypto']
-            });
-            startDate.setMonth(startDate.getMonth() + 1); startDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0); idx++;
-        }
     }
 
     function getGradatedColor(cat, index, total) {
-        const baseColor = catConfig[cat].color;
-        if (total <= 1) return baseColor;
-        // 銘柄ごとに微妙に色合いを変えるためのロジック（必要に応じて調整してください）
-        return baseColor; 
+        return catConfig[cat].color; 
+    }
+
+    // 指定日に最も近い過去の株価・為替を history マップから逆引きするロジック (土日祝のフォールバック)
+    function getPriceAtDate(symbol, targetDate) {
+        if (!fetchedPrices[symbol] || !fetchedPrices[symbol].history) {
+            return fetchedPrices[symbol] ? fetchedPrices[symbol].price : 0;
+        }
+        const history = fetchedPrices[symbol].history;
+        let curr = new Date(targetDate);
+        // ドンピシャの日付になければ最大10日前まで遡る
+        for (let i = 0; i < 10; i++) {
+            const dateStr = curr.toISOString().split('T')[0];
+            if (history[dateStr] !== undefined) {
+                return history[dateStr];
+            }
+            curr.setDate(curr.getDate() - 1);
+        }
+        return fetchedPrices[symbol].price || 0;
+    }
+
+    // 過去12ヶ月の各月末日のリストを生成するヘルパー
+    function getPastMonthsList() {
+        const list = [];
+        const now = new Date();
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+            list.push(d.toISOString().split('T')[0]);
+        }
+        return list;
     }
 
     function renderDashboard() {
@@ -634,13 +560,13 @@
             document.getElementById('chart-title').innerText = `アセットアロケーション (${catConfig[currentFilter].name})`;
             document.getElementById('chart-center-label').innerText = `${catConfig[currentFilter].name} 合計`;
             document.getElementById('chart-center-val').innerText = '¥' + Math.round(catTotals[currentFilter].val).toLocaleString();
-            document.getElementById('trend-title').innerText = `資産推移 (${catConfig[currentFilter].name})`;
+            document.getElementById('trend-title').innerText = `資産推移 (${catConfig[currentFilter].name} 過去1年自動集計)`;
         } else {
             document.getElementById('detail-title').innerText = "銘柄明細 (全表示)";
             document.getElementById('chart-title').innerText = "アセットアロケーション";
             document.getElementById('chart-center-label').innerText = "評価額合計";
             document.getElementById('chart-center-val').innerText = '¥' + Math.round(totalVal).toLocaleString();
-            document.getElementById('trend-title').innerText = "資産推移";
+            document.getElementById('trend-title').innerText = "資産推移 (過去1年・月次自動集計)";
         }
 
         const chartLabels = []; const chartData = []; const chartColors = [];
@@ -724,44 +650,39 @@
         if(worst.length === 0) worstEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
     }
 
+    // 【核心大改造】手動スナップショットを廃し、各銘柄のpurchaseDate以降のデータをオンデマンドでバックテスト集計
     function renderTrendChart() {
         const canvasEl = document.getElementById('trendChart');
         if (!canvasEl) return;
         const ctx = canvasEl.getContext('2d');
         if (trendChart) trendChart.destroy();
 
-        let displaySnaps = [];
+        // 過去12ヶ月の各月末基準日を生成
+        const targetDates = getPastMonthsList();
+        const displaySnaps = [];
 
-        if (historySnapshots.length === 0) {
-            const totals = calculateCurrentTotals();
-            displaySnaps = [{
-                date: new Date().toISOString().substring(0, 10),
-                'jp-stock': totals['jp-stock'], 'us-stock': totals['us-stock'],
-                'fund': totals['fund'], 'gold': totals['gold'], 'crypto': totals['crypto']
-            }];
-        } else {
-            let filteredSnaps = [...historySnapshots];
-            const now = new Date();
-            if (trendRange === '1y') {
-                const oneYearAgoTime = new Date().setFullYear(now.getFullYear() - 1);
-                filteredSnaps = filteredSnaps.filter(s => new Date(s.date.replace(/-/g, '/')).getTime() >= oneYearAgoTime);
-            } else if (trendRange === '3y') {
-                const threeYearsAgoTime = new Date().setFullYear(now.getFullYear() - 3);
-                filteredSnaps = filteredSnaps.filter(s => new Date(s.date.replace(/-/g, '/')).getTime() >= threeYearsAgoTime);
-            }
+        // 各月末基準日ループ
+        targetDates.forEach(tDate => {
+            const snap = { date: tDate, 'jp-stock': 0, 'us-stock': 0, 'fund': 0, 'gold': 0, 'crypto': 0 };
+            
+            holdings.forEach(h => {
+                // 1. 各銘柄の「取得年月日」が、基準日以前であるか判定
+                // 2. かつ「数量」が正しく登録されている場合のみその月の総資産に計上
+                if (h.purchaseDate && h.purchaseDate <= tDate && h.qty > 0) {
+                    const price = getPriceAtDate(h.symbol, tDate);
+                    
+                    let rate = 1.0;
+                    if (h.cat === 'us-stock') {
+                        // 米国株の場合、その基準日におけるリアルな過去の為替レート（JPY=X）を適用
+                        rate = getPriceAtDate('JPY=X', tDate);
+                    }
+                    snap[h.cat] += h.qty * price * rate;
+                }
+            });
+            displaySnaps.push(snap);
+        });
 
-            if (trendUnit === 'yearly') {
-                const years = {};
-                filteredSnaps.forEach(s => { const y = s.date.substring(0, 4); years[y] = s; });
-                displaySnaps = Object.values(years);
-            } else {
-                const months = {};
-                filteredSnaps.forEach(s => { const m = s.date.substring(0, 7); months[m] = s; });
-                displaySnaps = Object.values(months);
-            }
-        }
-
-        const labels = displaySnaps.map(s => trendUnit === 'yearly' ? s.date.substring(0, 4) + '年' : s.date.substring(0, 7));
+        const labels = displaySnaps.map(s => s.date.substring(0, 7)); // YYYY-MM 表示
         
         const allDatasets = [
             { id: 'jp-stock', label: '国内株', data: displaySnaps.map(s => s['jp-stock'] || 0), backgroundColor: catConfig['jp-stock'].color },
