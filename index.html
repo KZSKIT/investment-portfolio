@@ -3,20 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MY PORTFOLIO | 資産管理ダッシュボード</title>
-    <!-- Chart.js -->
+    <title>MY PORTFOLIO</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-color: #f1f5f9;
+            --bg-color: #f8fafc;
             --header-bg: #0f172a;
             --card-bg: #ffffff;
             --text-main: #1e293b;
             --text-sub: #64748b;
-            --border-color: #e2e8f0;
-            --primary: #3b82f6;
-            --success: #10b981;
-            --danger: #ef4444;
+            --border-color: #cbd5e1;
+
+            /* 国内標準の騰落色 */
+            --trend-plus: #ef4444;  /* 上昇：赤 */
+            --trend-minus: #10b981; /* 下落：緑 */
+            --trend-flat: #94a3b8;  /* 変化なし：グレー */
+
+            /* 5大カテゴリの一貫した固定色（意味のない色は足さない） */
+            --color-jp-stock: #3b82f6; /* 国内株：ブルー */
+            --color-us-stock: #1d4ed8; /* 米国株：ディープブルー */
+            --color-fund:     #10b981; /* 投資信託：グリーン */
+            --color-gold:     #f59e0b; /* 金：ゴールド */
+            --color-crypto:   #8b5cf6; /* 暗号資産：パープル */
         }
 
         body {
@@ -25,126 +33,137 @@
             color: var(--text-main);
             margin: 0;
             padding: 0;
+            font-size: 14px;
         }
 
-        /* ヘッダー・マーケット情報 */
         header {
             background-color: var(--header-bg);
             color: #ffffff;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 16px 20px;
         }
         .header-container {
             max-width: 1200px;
             margin: 0 auto;
             display: flex;
-            flex-direction: column;
-            gap: 15px;
+            justify-content: space-between;
+            align-items: center;
         }
-        @media(min-width: 768px) {
-            .header-container {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-            }
-        }
-        header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.05em; }
+        header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.05em; }
         
-        .market-board {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        .market-item {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            color: #cbd5e1;
-        }
-        .market-item strong { color: #ffffff; font-size: 13px; margin-left: 4px; }
+        .market-board { display: flex; gap: 16px; }
+        .market-item { font-size: 12px; color: #94a3b8; }
+        .market-item strong { color: #ffffff; margin-left: 4px; }
 
-        /* メインレイアウト */
         .container {
             max-width: 1200px;
-            margin: 24px auto;
+            margin: 20px auto;
             padding: 0 20px;
             display: flex;
             flex-direction: column;
-            gap: 24px;
-        }
-        
-        .card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid var(--border-color);
-        }
-        .card h2 {
-            margin: 0 0 16px 0;
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-main);
-            border-left: 4px solid var(--primary);
-            padding-left: 10px;
+            gap: 20px;
         }
 
         .grid-two {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 24px;
+            gap: 20px;
         }
         @media(min-width: 768px) {
-            .grid-two { grid-template-columns: 1fr 420px; }
+            .grid-two { grid-template-columns: 1fr 360px; }
         }
 
-        /* テーブル */
-        table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { padding: 12px 10px; border-bottom: 1px solid var(--border-color); text-align: right; }
-        th { background-color: #f8fafc; color: var(--text-sub); font-weight: 600; font-size: 13px; text-align: center; }
-        td.category { text-align: left; font-weight: 600; }
-        
-        input.amount-input {
-            width: 110px;
-            padding: 6px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            text-align: right;
-            font-size: 14px;
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
         }
-
-        .btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
+        .card h2 {
+            margin: 0 0 16px 0;
+            font-size: 15px;
             font-weight: 600;
+            color: var(--text-main);
         }
-        .btn:hover { background-color: #2563eb; }
-        .btn-secondary { background-color: #64748b; padding: 6px 12px; font-size: 12px; }
 
-        /* ドーナツグラフ */
-        .chart-box { position: relative; margin: 10px auto; height: 240px; width: 240px; }
+        /* 区分別サマリーテーブル */
+        .summary-table, .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .summary-table th, .summary-table td, .detail-table th, .detail-table td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: right;
+        }
+        .summary-table th, .detail-table th {
+            color: var(--text-sub);
+            font-weight: 500;
+            font-size: 12px;
+            text-align: right;
+            background: #f1f5f9;
+        }
+        .summary-table th:first-child, .summary-table td:first-child,
+        .detail-table th:first-child, .detail-table td:first-child {
+            text-align: left;
+        }
+
+        /* カテゴリのカラーインジケータ */
+        .category-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        /* ドーナツ中央テキスト */
+        .chart-box { position: relative; margin: 0 auto; height: 220px; width: 220px; }
         .chart-center-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             text-align: center; pointer-events: none;
         }
         .chart-center-text .label { font-size: 11px; color: var(--text-sub); }
-        .chart-center-text .val { font-size: 18px; font-weight: 700; }
+        .chart-center-text .val { font-size: 20px; font-weight: 700; }
 
-        /* 推移グラフ用 */
-        .trend-box { height: 300px; width: 100%; }
+        /* ランキング */
+        .ranking-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        @media(min-width: 768px) {
+            .ranking-container { grid-template-columns: 1fr 1fr; }
+        }
+        .ranking-box {
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .ranking-title { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 8px; }
+        .ranking-item { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
 
-        /* バックアップ・履歴操作 */
-        .flex-between { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
-        .history-controls { display: flex; gap: 8px; align-items: center; font-size: 13px; }
-        .history-controls input { padding: 5px; border-radius: 4px; border: 1px solid #cbd5e1; width: 110px; }
-        textarea.backup-io { width: 100%; height: 40px; font-family: monospace; font-size: 11px; margin-top: 8px; }
+        /* モバイル用チップ */
+        .sort-chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        @media(min-width: 768px) { .sort-chips { display: none; } }
+        .chip {
+            background: #e2e8f0; padding: 4px 12px; border-radius: 100px; font-size: 12px; cursor: pointer;
+        }
+        .chip.active { background: var(--header-bg); color: white; }
+
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background: #e2e8f0; }
+
+        /* 入力用簡易フォーム */
+        .dev-panel { margin-top: 30px; padding: 15px; background: #f1f5f9; border-radius: 6px; }
+        .dev-panel input, .dev-panel select { padding: 6px; margin-right: 5px; border: 1px solid var(--border-color); border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -152,341 +171,394 @@
 <header>
     <div class="header-container">
         <h1>MY PORTFOLIO</h1>
-        <!-- マーケット指標 -->
         <div class="market-board">
             <div class="market-item">USD/JPY <strong id="mkt-usdjpy">取得中...</strong></div>
-            <div class="market-item">BTC/JPY <strong id="mkt-btcjpy">取得中...</strong></div>
             <div class="market-item">GOLD (円/g) <strong id="mkt-gold">取得中...</strong></div>
-            <div class="market-item">S&P 500 <strong id="mkt-sp500">取得中...</strong></div>
         </div>
     </div>
 </header>
 
 <div class="container">
-    <!-- 上段：資産推移グラフ -->
     <div class="card">
-        <h2>資産推移（ヒストリカルデータ）</h2>
-        <div class="trend-box">
-            <canvas id="trendChart"></canvas>
+        <h2>資産推移</h2>
+        <div style="height: 160px; display:flex; align-items:center; justify-content:center; color:var(--text-sub); background:#f8fafc; border:1px dashed var(--border-color);">
+            ※ステップ3にて、日次スナップショットを用いた積み上げ棒グラフを統合します
         </div>
     </div>
 
-    <!-- 下段：データ入力とアロケーション -->
     <div class="grid-two">
         <div class="card">
-            <h2>資産データの入力・確認</h2>
-            <table>
+            <h2>資産構成・区分別サマリー</h2>
+            <table class="summary-table">
                 <thead>
                     <tr>
-                        <th>カテゴリー</th>
-                        <th>現在の評価額 (円)</th>
-                        <th>投資元本 (円)</th>
-                        <th>損益率</th>
+                        <th style="text-align:left;">区分 (クリックで内訳)</th>
+                        <th>評価額</th>
+                        <th>構成比</th>
+                        <th>評価損益</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr data-key="bank"><td class="category">銀行口座</td><td><input type="text" class="amount-input" id="val-bank" value="0"></td><td><input type="text" class="amount-input" id="cost-bank" value="0"></td><td id="ret-bank" style="font-weight:600;">0%</td></tr>
-                    <tr data-key="stock"><td class="category">証券口座</td><td><input type="text" class="amount-input" id="val-stock" value="0"></td><td><input type="text" class="amount-input" id="cost-stock" value="0"></td><td id="ret-stock" style="font-weight:600;">0%</td></tr>
-                    <tr data-key="crypto"><td class="category">仮想通貨 (BTC/ETH)</td><td><input type="text" class="amount-input" id="val-crypto" value="0"></td><td><input type="text" class="amount-input" id="cost-crypto" value="0"></td><td id="ret-crypto" style="font-weight:600;">0%</td></tr>
-                    <tr data-key="dc"><td class="category">DC口座</td><td><input type="text" class="amount-input" id="val-dc" value="0"></td><td><input type="text" class="amount-input" id="cost-dc" value="0"></td><td id="ret-dc" style="font-weight:600;">0%</td></tr>
-                </tbody>
-                <tfoot>
-                    <tr style="background-color: #f8fafc; font-weight: bold;">
-                        <td style="text-align: left;">合計</td>
-                        <td id="total-val">0</td>
-                        <td id="total-cost">0</td>
-                        <td id="total-ret" style="font-size: 15px;">0%</td>
-                    </tr>
-                </tfoot>
+                <tbody id="summary-body">
+                    </tbody>
             </table>
-            
-            <div class="flex-between">
-                <div class="history-controls">
-                    <input type="month" id="history-date">
-                    <button class="btn btn-secondary" onclick="saveCurrentToHistory()">この年月で推移に記録</button>
+
+            <h2 id="detail-title" style="margin-top: 30px;">銘柄明細 (全表示)</h2>
+            <div class="sort-chips" id="sort-chips">
+                <div class="chip active" onclick="setSort('name')">銘柄名</div>
+                <div class="chip" onclick="setSort('eval')">評価額</div>
+                <div class="chip" onclick="setSort('profit')">評価損益</div>
+            </div>
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;" class="sortable" onclick="handleSort('name')">銘柄 / 証券会社</th>
+                        <th class="sortable" onclick="handleSort('price')">現在値</th>
+                        <th>前日比 / 前月比</th>
+                        <th class="sortable" onclick="handleSort('eval')">評価額 / 数量</th>
+                        <th class="sortable" onclick="handleSort('profit')">評価損益</th>
+                    </tr>
+                </thead>
+                <tbody id="detail-body">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="grid-one">
+            <div class="card">
+                <h2>アセットアロケーション</h2>
+                <div class="chart-box">
+                    <canvas id="allocationChart"></canvas>
+                    <div class="chart-center-text">
+                        <div class="label">評価額合計</div>
+                        <div class="val" id="chart-center-val">¥0</div>
+                    </div>
                 </div>
-                <button class="btn" onclick="saveData()">データを保存して更新</button>
             </div>
 
-            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                <span style="font-size:12px; color:var(--text-sub);">データ移行用コード：</span>
-                <textarea id="backupText" class="backup-io" placeholder="エクスポート/インポート用"></textarea>
-                <div style="margin-top:5px; display:flex; gap:5px;">
-                    <button class="btn btn-secondary" onclick="exportData()">書き出し</button>
-                    <button class="btn btn-secondary" onclick="importData()">復元</button>
-                    <button class="btn btn-secondary" style="background-color:#e11d48;" onclick="clearHistory()">推移履歴をクリア</button>
+            <div class="card">
+                <h2>損益率ランキング</h2>
+                <div class="ranking-container">
+                    <div class="ranking-box">
+                        <div class="ranking-title" style="color:var(--trend-plus);">🔥 上位ベスト3</div>
+                        <div id="ranking-best"></div>
+                    </div>
+                    <div class="ranking-box">
+                        <div class="ranking-title" style="color:var(--trend-minus);">❄️ 下位ワースト3</div>
+                        <div id="ranking-worst"></div>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- 右側：アロケーション円グラフ -->
-        <div class="card">
-            <h2>アセットアロケーション</h2>
-            <div class="chart-box">
-                <canvas id="allocationChart"></canvas>
-                <div class="chart-center-text">
-                    <div class="label">評価額合計</div>
-                    <div class="val" id="chart-center-val">¥0</div>
-                </div>
-            </div>
+    <div class="card dev-panel">
+        <h2>【ステップ1確認用】テストデータ登録フォーム</h2>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <select id="form-cat">
+                <option value="jp-stock">国内株</option>
+                <option value="us-stock">米国株</option>
+                <option value="fund">投資信託</option>
+                <option value="gold">金</option>
+                <option value="crypto">暗号資産</option>
+            </select>
+            <input type="text" id="form-name" placeholder="銘柄名（例: トヨタ）">
+            <input type="text" id="form-broker" placeholder="証券会社（例: SBI証券）">
+            <input type="number" id="form-qty" placeholder="保有数量">
+            <input type="number" id="form-cost" placeholder="取得単価">
+            <input type="number" id="form-price" placeholder="現在値（手動シミュレート用）">
+            <button class="btn" onclick="addTestData()">銘柄を追加</button>
+            <button class="btn btn-secondary" onclick="clearTestData()" style="background:#ef4444;">データ全消去</button>
         </div>
     </div>
 </div>
 
 <script>
-    const keys = ['bank', 'stock', 'crypto', 'dc'];
-    let allocChart = null;
-    let trendChart = null;
-    let historyData = [];
-
-    window.onload = function() {
-        const now = new Date();
-        document.getElementById('history-date').value = now.toISOString().substring(0, 7);
-
-        setupInputListeners();
-        loadData();
-        fetchMarketRates();
-        updateDashboard();
+    // 5大カテゴリの色定義をJS側でも一貫運用
+    const catConfig = {
+        'jp-stock': { name: '国内株', color: '#3b82f6' },
+        'us-stock': { name: '米国株', color: '#1d4ed8' },
+        'fund':     { name: '投資信託', color: '#10b981' },
+        'gold':     { name: '金', color: '#f59e0b' },
+        'crypto':   { name: '暗号資産', color: '#8b5cf6' }
     };
 
-// 【完全独立・CORSエラー対策版】外部マーケット指標を取得する関数
-    async function fetchMarketRates() {
-        // 各指標を完全に独立して動かし、一つが遅れても他を巻き添えにしない設計
-        
-        // 1. USD/JPY
-        let usdRate = 161.60; // 万が一のための初期フォールバック値
+    let holdings = [];
+    let currentFilter = null; // ドリルダウン用
+    let currentSort = { key: 'eval', asc: false };
+    let allocChart = null;
+
+    window.onload = function() {
+        loadHoldings();
+        fetchLiveRates();
+        renderDashboard();
+    };
+
+    // 為替・金のライブ取得（ブラウザから直接取得可能なエンドポイント）
+    async function fetchLiveRates() {
         try {
             const resUsd = await fetch('https://open.er-api.com/v6/latest/USD');
             if (resUsd.ok) {
-                const dataUsd = await resUsd.json();
-                usdRate = dataUsd.rates.JPY;
-                document.getElementById('mkt-usdjpy').innerText = '¥' + usdRate.toFixed(2);
-            } else { document.getElementById('mkt-usdjpy').innerText = 'エラー'; }
-        } catch(e) { document.getElementById('mkt-usdjpy').innerText = '通信エラー'; }
-
-        // 2. BTC/JPY
-        try {
-            const resBtc = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=jpy');
-            if (resBtc.ok) {
-                const dataBtc = await resBtc.json();
-                document.getElementById('mkt-btcjpy').innerText = '¥' + dataBtc.bitcoin.jpy.toLocaleString();
-            } else { document.getElementById('mkt-btcjpy').innerText = 'エラー'; }
-        } catch(e) { document.getElementById('mkt-btcjpy').innerText = '通信エラー'; }
-
-        // 3. GOLD 日本円/g (1oz = 31.1035g)
-        try {
+                const data = await resUsd.json();
+                document.getElementById('mkt-usdjpy').innerText = '¥' + data.rates.JPY.toFixed(2);
+            }
             const resGold = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=jpy');
             if (resGold.ok) {
-                const dataGold = await resGold.json();
-                const gramPrice = dataGold['pax-gold'].jpy / 31.1035;
+                const data = await resGold.json();
+                const gramPrice = data['pax-gold'].jpy / 31.1035;
                 document.getElementById('mkt-gold').innerText = '¥' + Math.round(gramPrice).toLocaleString();
-            } else { document.getElementById('mkt-gold').innerText = 'エラー'; }
-        } catch(e) { document.getElementById('mkt-gold').innerText = '通信エラー'; }
-
-        // 4. S&P 500 (オープンなパブリック金融APIを使用。CORSエラー回避)
-        try {
-            const resSp = await fetch('https://api.coingecko.com/api/v3/coins/s-p-500-index-0x' === '' ? '' : 'https://api.stockdata.org/v1/data/quote?symbols=^GSPC&api_token=demo');
-            // デモトークンや制限を回避するため、完全にオープンな代替エンドポイント（金融指数プロキシ）を叩く
-            const altResSp = await fetch('https://raw.githubusercontent.com/datasets/s-and-p-500/master/data/data.csv').then(r => r.ok ? r.text() : '');
-            
-            if (altResSp) {
-                // 最も確実なGitHub上のパブリックデータ（直近値）から抽出、または経済指標エンドポイント
-                const lines = altResSp.trim().split('\n');
-                const latestLine = lines[lines.length - 1].split(',');
-                // もしパブリックデータが正常ならそれを使用、ダメなら最新のリアルタイムミラーからパース
-                let spValue = parseFloat(latestLine[1]) || 5450.40; // 基本フォールバック
-                
-                // よりリアルタイムに近いオープンAPIでの上書き
-                const realTimeSp = await fetch('https://financialmodelingprep.com/api/v3/quote/^GSPC?apikey=demo');
-                if (realTimeSp.ok) {
-                    const rtData = await realTimeSp.json();
-                    if(rtData && rtData[0]) spValue = rtData[0].price;
-                }
-                document.getElementById('mkt-sp500').innerText = Number(spValue).toLocaleString(undefined, {maximumFractionDigits: 2});
-            } else {
-                document.getElementById('mkt-sp500').innerText = '5,470.23'; // 接続混雑時の安定フォールバック表示
             }
-        } catch(e) { 
-            console.error(e); 
-            document.getElementById('mkt-sp500').innerText = '5,470.23'; // エラーで止めず、目安値を出す安心設計
+        } catch(e) { console.error("ライブレート取得エラー", e); }
+    }
+
+    function loadHoldings() {
+        const saved = localStorage.getItem('my_portfolio_holdings');
+        if (saved) {
+            holdings = JSON.parse(saved);
+        } else {
+            // 初期表示用のダミー設定
+            holdings = [
+                { id: 1, cat: 'jp-stock', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', qty: 100, cost: 2500, price: 2800 },
+                { id: 2, cat: 'us-stock', name: 'Apple (AAPL)', broker: '楽天証券', qty: 10, cost: 180, price: 210 }, // 本来はドル換算が必要ですがステップ1のベースとして
+                { id: 3, cat: 'fund', name: 'eMAXIS Slim 全世界株式', broker: 'SBI証券', qty: 50000, cost: 2.0, price: 2.4 },
+                { id: 4, cat: 'gold', name: '純金積立', broker: '田中貴金属', qty: 50, cost: 9000, price: 12000 },
+                { id: 5, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.05, cost: 6000000, price: 9500000 }
+            ];
+            localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
         }
     }
 
-    function setupInputListeners() {
-        keys.forEach(key => {
-            ['val', 'cost'].forEach(type => {
-                const input = document.getElementById(`${type}-${key}`);
-                input.addEventListener('focus', function() { this.value = this.value.replace(/,/g, ''); });
-                input.addEventListener('blur', function() {
-                    let num = parseFloat(this.value.replace(/,/g, '')) || 0;
-                    this.value = num.toLocaleString();
-                });
-            });
-        });
-    }
-
-    function getNumericValue(id) {
-        return parseFloat(document.getElementById(id).value.replace(/,/g, '')) || 0;
-    }
-
-    function loadData() {
-        keys.forEach(key => {
-            const savedVal = localStorage.getItem(`assets_${key}_val`) || '0';
-            const savedCost = localStorage.getItem(`assets_${key}_cost`) || '0';
-            document.getElementById(`val-${key}`).value = parseFloat(savedVal).toLocaleString();
-            document.getElementById(`cost-${key}`).value = parseFloat(savedCost).toLocaleString();
-        });
-        const savedHistory = localStorage.getItem('assets_history_data');
-        if (savedHistory) { historyData = JSON.parse(savedHistory); }
-    }
-
-    function saveData() {
-        keys.forEach(key => {
-            localStorage.setItem(`assets_${key}_val`, getNumericValue(`val-${key}`));
-            localStorage.setItem(`assets_${key}_cost`, getNumericValue(`cost-${key}`));
-        });
-        updateDashboard();
-        alert('現在のデータを保存しました。');
-    }
-
-    function saveCurrentToHistory() {
-        const dateStr = document.getElementById('history-date').value;
-        if(!dateStr) return alert('年月を選択してください。');
-
-        const existingIdx = historyData.findIndex(item => item.date === dateStr);
-        const currentSnap = {
-            date: dateStr,
-            bank: getNumericValue('val-bank'),
-            stock: getNumericValue('val-stock'),
-            crypto: getNumericValue('val-crypto'),
-            dc: getNumericValue('val-dc')
+    function addTestData() {
+        const name = document.getElementById('form-name').value;
+        if(!name) return alert('銘柄名を入力してください');
+        const newItem = {
+            id: Date.now(),
+            cat: document.getElementById('form-cat').value,
+            name: name,
+            broker: document.getElementById('form-broker').value || '不明',
+            qty: parseFloat(document.getElementById('form-qty').value) || 0,
+            cost: parseFloat(document.getElementById('form-cost').value) || 0,
+            price: parseFloat(document.getElementById('form-price').value) || 0
         };
-
-        if(existingIdx >= 0) { historyData[existingIdx] = currentSnap; } 
-        else { historyData.push(currentSnap); }
-
-        historyData.sort((a, b) => a.date.localeCompare(b.date));
-        localStorage.setItem('assets_history_data', JSON.stringify(historyData));
-        updateDashboard();
-        alert(`${dateStr} のデータを記録しました。`);
+        holdings.push(newItem);
+        localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
+        renderDashboard();
     }
 
-    function clearHistory() {
-        if(confirm('蓄積した資産推移のデータをすべて削除しますか？')) {
-            historyData = [];
-            localStorage.removeItem('assets_history_data');
-            updateDashboard();
+    function clearTestData() {
+        if(confirm('全てのデータをクリアしますか？')) {
+            holdings = [];
+            localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
+            renderDashboard();
         }
     }
 
-    function updateDashboard() {
-        let totalVal = 0;
-        let totalCost = 0;
-        const chartData = [];
-
-        keys.forEach(key => {
-            const val = getNumericValue(`val-${key}`);
-            const cost = getNumericValue(`cost-${key}`);
-            totalVal += val; totalCost += cost; chartData.push(val);
-
-            const retEl = document.getElementById(`ret-${key}`);
-            if (cost > 0) {
-                const roi = ((val - cost) / cost) * 100;
-                retEl.innerText = (roi >= 0 ? '+' : '') + roi.toFixed(1) + '%';
-                retEl.style.color = roi >= 0 ? 'var(--danger)' : 'var(--success)';
-            } else { retEl.innerText = '0%'; retEl.style.color = 'inherit'; }
-        });
-
-        document.getElementById('total-val').innerText = totalVal.toLocaleString();
-        document.getElementById('total-cost').innerText = totalCost.toLocaleString();
-        document.getElementById('chart-center-val').innerText = '¥' + totalVal.toLocaleString();
-
-        const totalRetEl = document.getElementById('total-ret');
-        if (totalCost > 0) {
-            const totalRoi = ((totalVal - totalCost) / totalCost) * 100;
-            totalRetEl.innerText = (totalRoi >= 0 ? '+' : '') + totalRoi.toFixed(1) + '%';
-            totalRetEl.style.color = totalRoi >= 0 ? 'var(--danger)' : 'var(--success)';
-        } else { totalRetEl.innerText = '0%'; totalRetEl.style.color = 'inherit'; }
-
-        renderCharts(chartData);
+    function handleSort(key) {
+        if (currentSort.key === key) {
+            currentSort.asc = !currentSort.asc;
+        } else {
+            currentSort.key = key;
+            currentSort.asc = false;
+        }
+        renderDashboard();
     }
 
-    function renderCharts(allocData) {
-        const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
-        if (allocChart) { allocChart.destroy(); }
-        const isAllZero = allocData.every(v => v === 0);
+    function setSort(key) {
+        currentSort.key = key;
+        currentSort.asc = false;
+        const chips = document.querySelectorAll('.chip');
+        chips.forEach(c => c.classList.remove('active'));
+        renderDashboard();
+    }
 
-        allocChart = new Chart(ctxAlloc, {
+    function toggleFilter(cat) {
+        currentFilter = (currentFilter === cat) ? null : cat;
+        renderDashboard();
+    }
+
+    function renderDashboard() {
+        // 1. 各集計値のクリアと再計算
+        let totalVal = 0;
+        const catTotals = { 'jp-stock': { val: 0, cost: 0 }, 'us-stock': { val: 0, cost: 0 }, 'fund': { val: 0, cost: 0 }, 'gold': { val: 0, cost: 0 }, 'crypto': { val: 0, cost: 0 } };
+
+        holdings.forEach(h => {
+            // 米国株の一時的な簡易円換算シミュレート（ステップ2で為替レートと連動させます）
+            const isUs = h.cat === 'us-stock';
+            const rate = isUs ? 160 : 1; 
+
+            const evalVal = h.qty * h.price * rate;
+            const costVal = h.qty * h.cost * rate;
+
+            catTotals[h.cat].val += evalVal;
+            catTotals[h.cat].cost += costVal;
+            totalVal += evalVal;
+        });
+
+        // 2. 区分別サマリーテーブルの描画
+        const summaryBody = document.getElementById('summary-body');
+        summaryBody.innerHTML = '';
+        
+        const chartLabels = [];
+        const chartData = [];
+        const chartColors = [];
+
+        Object.keys(catConfig).forEach(cat => {
+            const data = catTotals[cat];
+            const pct = totalVal > 0 ? ((data.val / totalVal) * 100).toFixed(1) : '0.0';
+            const profit = data.val - data.cost;
+            const profitPct = data.cost > 0 ? ((profit / data.cost) * 100).toFixed(1) : '0.0';
+
+            chartLabels.push(catConfig[cat].name);
+            chartData.push(data.val);
+            chartColors.push(catConfig[cat].color);
+
+            let trendColor = varColor('--trend-flat');
+            if (profit > 0) trendColor = 'var(--danger)'; // プラス＝赤
+            if (profit < 0) trendColor = 'var(--success)'; // マイナス＝緑
+
+            const isSelected = currentFilter === cat ? 'background:#f1f5f9; border-left:4px solid ' + catConfig[cat].color : '';
+
+            summaryBody.innerHTML += `
+                <tr style="cursor:pointer; ${isSelected}" onclick="toggleFilter('${cat}')">
+                    <td class="category" style="text-align:left;">
+                        <span class="category-label">
+                            <span class="color-dot" style="background-color:${catConfig[cat].color}"></span>
+                            ${catConfig[cat].name}
+                        </span>
+                    </td>
+                    <td>¥${Math.round(data.val).toLocaleString()}</td>
+                    <td>${pct}%</td>
+                    <td style="color:${trendColor}; font-weight:600;">
+                        ${profit >= 0 ? '+' : ''}${Math.round(profit).toLocaleString()}<br>
+                        <span style="font-size:11px;">(${profit >= 0 ? '+' : ''}${profitPct}%)</span>
+                    </td>
+                </tr>
+            `;
+        });
+
+        // 3. ドーナツ中央・グラフ更新
+        document.getElementById('chart-center-val').innerText = '¥' + Math.round(totalVal).toLocaleString();
+        renderDonut(chartLabels, chartData, chartColors);
+
+        // 4. 明細テーブルのフィルタ＆ソート適用
+        let filteredHoldings = holdings.map(h => {
+            const isUs = h.cat === 'us-stock';
+            const rate = isUs ? 160 : 1;
+            const evalVal = h.qty * h.price * rate;
+            const costVal = h.qty * h.cost * rate;
+            const profit = evalVal - costVal;
+            const profitPct = costVal > 0 ? (profit / costVal) * 100 : 0;
+            return { ...h, evalVal, profit, profitPct };
+        });
+
+        if (currentFilter) {
+            filteredHoldings = filteredHoldings.filter(h => h.cat === currentFilter);
+            document.getElementById('detail-title').innerText = `銘柄明細 (${catConfig[currentFilter].name} 内訳)`;
+        } else {
+            document.getElementById('detail-title').innerText = "銘柄明細 (全表示)";
+        }
+
+        // ソート処理
+        filteredHoldings.sort((a, b) => {
+            let valA = a[currentSort.key];
+            let valB = b[currentSort.key];
+            if (currentSort.key === 'eval') { valA = a.evalVal; valB = b.evalVal; }
+            if (currentSort.key === 'profit') { valA = a.profitPct; valB = b.profitPct; }
+            
+            if (typeof valA === 'string') {
+                return currentSort.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            return currentSort.asc ? valA - valB : valB - valA;
+        });
+
+        // 明細テーブルの描画
+        const detailBody = document.getElementById('detail-body');
+        detailBody.innerHTML = '';
+        
+        filteredHoldings.forEach(h => {
+            let trendColor = 'inherit';
+            if (h.profit > 0) trendColor = 'var(--danger)';
+            if (h.profit < 0) trendColor = 'var(--success)';
+
+            detailBody.innerHTML += `
+                <tr>
+                    <td style="text-align:left; border-left: 3px solid ${catConfig[h.cat].color}; padding-left:8px;">
+                        <strong>${h.name}</strong><br>
+                        <span style="font-size:11px; color:var(--text-sub);">${h.broker}</span>
+                    </td>
+                    <td>
+                        ¥${h.price.toLocaleString()}<br>
+                        <span style="font-size:11px; color:var(--text-sub);">単価: ¥${h.cost.toLocaleString()}</span>
+                    </td>
+                    <td style="color:var(--trend-flat); font-size:12px;">
+                        <span style="color:var(--trend-flat);">前日: --</span><br>
+                        <span style="color:var(--trend-flat);">前月: --</span>
+                    </td>
+                    <td>
+                        ¥${Math.round(h.evalVal).toLocaleString()}<br>
+                        <span style="font-size:11px; color:var(--text-sub);">${h.qty.toLocaleString()}株/口</span>
+                    </td>
+                    <td style="color:${trendColor}; font-weight:600;">
+                        ${h.profit >= 0 ? '+' : ''}${Math.round(h.profit).toLocaleString()}<br>
+                        <span style="font-size:11px;">(${h.profit >= 0 ? '+' : ''}${h.profitPct.toFixed(1)}%)</span>
+                    </td>
+                </tr>
+            `;
+        });
+
+        // 5. ランキングの生成
+        renderRankings(filteredHoldings);
+    }
+
+    function renderDonut(labels, data, colors) {
+        const ctx = document.getElementById('allocationChart').getContext('2d');
+        if (allocChart) allocChart.destroy();
+
+        const isAllZero = data.every(v => v === 0);
+
+        allocChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['銀行口座', '証券口座', '仮想通貨', 'DC口座'],
+                labels: labels,
                 datasets: [{
-                    data: isAllZero ? [1,1,1,1] : allocData,
-                    backgroundColor: ['#38bdf8', '#3b82f6', '#f59e0b', '#a855f7'],
-                    borderWidth: 2
+                    data: isAllZero ? [1,1,1,1,1] : data,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    hoverOffset: 3
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
-        });
-
-        const ctxTrend = document.getElementById('trendChart').getContext('2d');
-        if (trendChart) { trendChart.destroy(); }
-
-        const labels = historyData.length > 0 ? historyData.map(d => d.date) : ['記録なし'];
-        const datasets = [
-            { label: '銀行口座', data: historyData.map(d => d.bank), backgroundColor: '#38bdf8' },
-            { label: '証券口座', data: historyData.map(d => d.stock), backgroundColor: '#3b82f6' },
-            { label: '仮想通貨', data: historyData.map(d => d.crypto), backgroundColor: '#f59e0b' },
-            { label: 'DC口座', data: historyData.map(d => d.dc), backgroundColor: '#a855f7' }
-        ];
-        if(historyData.length === 0) { datasets.forEach(ds => ds.data = [0]); }
-
-        trendChart = new Chart(ctxTrend, {
-            type: 'bar',
-            data: { labels: labels, datasets: datasets },
             options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, ticks: { callback: value => '¥' + (value / 10000).toLocaleString() + '万' } }
-                },
-                plugins: { legend: { position: 'bottom' } }
+                responsive: true, maintainAspectRatio: false, cutout: '78%',
+                plugins: { legend: { display: false } }
             }
         });
     }
 
-    function exportData() {
-        const exportObj = { history: historyData, current: {} };
-        keys.forEach(key => {
-            exportObj.current[`val_${key}`] = getNumericValue(`val-${key}`);
-            exportObj.current[`cost_${key}`] = getNumericValue(`cost-${key}`);
+    function renderRankings(items) {
+        // 損益率でソートしたランキング用配列
+        const ranked = [...items].filter(h => h.profit !== 0);
+        
+        // ベスト3（降順）
+        const best = [...ranked].sort((a,b) => b.profitPct - a.profitPct).slice(0, 3);
+        // ワースト3（昇順）
+        const worst = [...ranked].sort((a,b) => a.profitPct - b.profitPct).slice(0, 3);
+
+        const bestEl = document.getElementById('ranking-best');
+        const worstEl = document.getElementById('ranking-worst');
+        bestEl.innerHTML = ''; worstEl.innerHTML = '';
+
+        best.forEach((h, i) => {
+            bestEl.innerHTML += `<div class="ranking-item"><span>${i+1}. ${h.name}</span><strong style="color:var(--danger)">+${h.profitPct.toFixed(1)}%</strong></div>`;
         });
-        const jsonString = btoa(unescape(encodeURIComponent(JSON.stringify(exportObj))));
-        document.getElementById('backupText').value = jsonString;
-        document.getElementById('backupText').select();
-        alert('設定と推移データを含むすべてのバックアップコードを生成しました。');
+        worst.forEach((h, i) => {
+            worstEl.innerHTML += `<div class="ranking-item"><span>${i+1}. ${h.name}</span><strong style="color:var(--success)">${h.profitPct.toFixed(1)}%</strong></div>`;
+        });
+
+        if(best.length === 0) bestEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
+        if(worst.length === 0) worstEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
     }
 
-    function importData() {
-        const code = document.getElementById('backupText').value.trim();
-        if (!code) return alert('コードを貼り付けてください。');
-        if (confirm('データを復元しますか？履歴もすべて上書きされます。')) {
-            try {
-                const data = JSON.parse(decodeURIComponent(escape(atob(code))));
-                if(data.history) {
-                    historyData = data.history;
-                    localStorage.setItem('assets_history_data', JSON.stringify(historyData));
-                }
-                if(data.current) {
-                    keys.forEach(key => {
-                        if(data.current[`val_${key}`] !== undefined) localStorage.setItem(`assets_${key}_val`, data.current[`val_${key}`]);
-                        if(data.current[`cost_${key}`] !== undefined) localStorage.setItem(`assets_${key}_cost`, data.current[`cost_${key}`]);
-                    });
-                }
-                loadData(); updateDashboard(); document.getElementById('backupText').value = '';
-                alert('すべてのデータを復元しました！');
-            } catch (e) { alert('無効なコードです。'); }
-        }
+    function varColor(varName) {
+        return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
     }
 </script>
 </body>
