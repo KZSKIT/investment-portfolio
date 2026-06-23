@@ -3,12 +3,20 @@ import fs from 'fs';
 // 取得対象の国内株・米国株シンボル（Yahoo Finance形式）
 // サンプルデータで使用している銘柄のコードです
 const SYMBOLS = [
-    '7203.T', // トヨタ自動車
-    '8306.T', // 三菱UFJ FG
-    '6758.T', // ソニーグループ
-    'AAPL',   // Apple
-    'MSFT',   // Microsoft
-    'NVDA'    // NVIDIA
+    '2153.T', // コシダカHD
+    '2337.T', // いちご
+    '3246.T', // コーセーアールイー
+    '4668.T', // 明光ネット
+    '6904.T', // 原田工業
+    '7085.T', // カーブスHD
+    '7294.T', // ヨロズ
+    '8165.T', // 千趣会
+    '8173.T', // JOSHIN
+    '8742.T', // 小林洋行
+    '9765.T', // オオバ    
+    'INTC',   // INTL
+    'MSFT',   // MICROSOFT
+
 ];
 
 const OUTPUT_FILE = 'prices.json';
