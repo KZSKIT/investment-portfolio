@@ -309,18 +309,36 @@
         } catch(e) { console.error("ライブレート取得エラー", e); }
     }
 
-    function loadHoldings() {
+function loadHoldings() {
         const saved = localStorage.getItem('my_portfolio_holdings');
         if (saved) {
             holdings = JSON.parse(saved);
         } else {
             holdings = [
-                { id: 1, cat: 'jp-stock', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', qty: 100, cost: 2500, price: 2800 },
-                { id: 2, cat: 'jp-stock', name: '三菱UFJ (8306)', broker: 'SBI証券', qty: 200, cost: 1200, price: 1550 },
-                { id: 3, cat: 'us-stock', name: 'Apple (AAPL)', broker: '楽天証券', qty: 10, cost: 180, price: 210 }, 
-                { id: 4, cat: 'fund', name: 'eMAXIS Slim 全世界株式', broker: 'SBI証券', qty: 50000, cost: 2.0, price: 2.4 },
-                { id: 5, cat: 'gold', name: '純金積立', broker: '田中貴金属', qty: 50, cost: 9000, price: 12000 },
-                { id: 6, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.05, cost: 6000000, price: 9500000 }
+                // 1. 国内株 (jp-stock)
+                { id: 1, cat: 'jp-stock', name: 'トヨタ自動車 (7203)', broker: 'SBI証券', qty: 100, cost: 2500, price: 2850 },
+                { id: 2, cat: 'jp-stock', name: '三菱UFJ FG (8306)', broker: 'SBI証券', qty: 500, cost: 1200, price: 1580 },
+                { id: 3, cat: 'jp-stock', name: 'ソニーグループ (6758)', broker: '楽天証券', qty: 50, cost: 13500, price: 12800 },
+
+                // 2. 米国株 (us-stock) ※1株あたり単価。米ドル建てシミュレーション用
+                { id: 4, cat: 'us-stock', name: 'Apple (AAPL)', broker: 'SBI証券', qty: 15, cost: 180, price: 215 },
+                { id: 5, cat: 'us-stock', name: 'Microsoft (MSFT)', broker: 'SBI証券', qty: 8, cost: 420, price: 445 },
+                { id: 6, cat: 'us-stock', name: 'NVIDIA (NVDA)', broker: 'マネックス証券', qty: 40, cost: 95, price: 125 },
+
+                // 3. 投資信託 (fund)
+                { id: 7, cat: 'fund', name: 'eMAXIS Slim 全世界株式(オール・カントリー)', broker: 'SBI証券', qty: 850000, cost: 1.8, price: 2.45 },
+                { id: 8, cat: 'fund', name: 'eMAXIS Slim 米国株式(S&P500)', broker: 'SBI証券', qty: 500000, cost: 2.1, price: 2.90 },
+                { id: 9, cat: 'fund', name: 'ニッセイ外国株式インデックスファンド', broker: '楽天証券', qty: 300000, cost: 2.4, price: 2.30 },
+
+                // 4. 金 (gold)
+                { id: 10, cat: 'gold', name: '純金積立 (現物ゴールド)', broker: '田中貴金属', qty: 85, cost: 9200, price: 12800 },
+                { id: 11, cat: 'gold', name: 'SPDRゴールド・シェア (1326)', broker: 'SBI証券', qty: 20, cost: 25000, price: 31000 },
+                { id: 12, cat: 'gold', name: '金鉱株ファンド', broker: '楽天証券', qty: 100000, cost: 1.2, price: 1.4 },
+
+                // 5. 暗号資産 (crypto)
+                { id: 13, cat: 'crypto', name: 'Bitcoin (BTC)', broker: 'bitFlyer', qty: 0.08, cost: 6500000, price: 9650000 },
+                { id: 14, cat: 'crypto', name: 'Ethereum (ETH)', broker: 'Coincheck', qty: 1.5, cost: 420000, price: 530000 },
+                { id: 15, cat: 'crypto', name: 'Ripple (XRP)', broker: 'bitFlyer', qty: 2500, cost: 95, price: 82 }
             ];
             localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
         }
