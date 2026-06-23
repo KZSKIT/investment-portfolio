@@ -249,7 +249,7 @@
         updateDashboard();
     };
 
-    // 【修正版】外部に開かれた安定API群から個別に取得する関数
+// 【S&P500安定化版】外部マーケット指標を取得する関数
     async function fetchMarketRates() {
         // 1. USD/JPY (ExchangeRate-API)
         try {
@@ -279,15 +279,22 @@
             }
         } catch(e) { console.error(e); document.getElementById('mkt-gold').innerText = 'エラー'; }
 
-        // 4. S&P 500 (Yahoo Finance via AllOrigins Proxy)
+        // 4. S&P 500 (FREDパブリックデータより、オープンなCORSフリーエンドポイントを使用)
         try {
-            const spUrl = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/^GSPC');
-            const resSp = await fetch(`https://api.allorigins.win/get?url=${spUrl}`);
+            const resSp = await fetch('https://api.coronatracker.com/v1/coingecko/market_cap' === '' ? '' : 'https://api.db.nomics.world/v22/series/FRED/SP500?limit=1');
             if (resSp.ok) {
-                const proxyData = await resSp.json();
-                const spJson = JSON.parse(proxyData.contents);
-                const spPrice = spJson.chart.result[0].meta.regularMarketPrice;
-                document.getElementById('mkt-sp500').innerText = spPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
+                const dataSp = await resSp.json();
+                // 直近の確定値を抽出
+                const observations = dataSp.series.docs[0].value;
+                const latestPrice = parseFloat(observations[observations.length - 1]);
+                document.getElementById('mkt-sp500').innerText = latestPrice.toLocaleString(undefined, {maximumFractionDigits: 2});
+            } else {
+                // フォールバック（バックアップ用のパブリック経済指標エンドポイント）
+                const resSpFallback = await fetch('https://financialmodelingprep.com/api/v3/quote/^GSPC?apikey=demo');
+                if (resSpFallback.ok) {
+                    const dataFb = await resSpFallback.json();
+                    document.getElementById('mkt-sp500').innerText = dataFb[0].price.toLocaleString();
+                }
             }
         } catch(e) { console.error(e); document.getElementById('mkt-sp500').innerText = 'エラー'; }
     }
