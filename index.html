@@ -139,7 +139,7 @@
 <div class="container">
     <div class="card">
         <div class="controls-row">
-            <h2>資産推移（ヒストリカルデータ）</h2>
+            <h2 id="trend-title">資産推移</h2>
             <div style="display:flex; gap:10px;">
                 <div class="btn-group">
                     <button class="btn-toggle active" id="range-all" onclick="setTrendRange('all')">全期間</button>
@@ -231,11 +231,11 @@
                 <option value="crypto">暗号資産</option>
             </select>
             <input type="text" id="form-name" placeholder="銘柄名（例: トヨタ）">
-            <input type="text" id="form-symbol" placeholder="Yahooコード（例: 7203.T / AAPL）">
+            <input type="text" id="form-symbol" placeholder="Yahooコード">
             <input type="text" id="form-broker" placeholder="証券会社">
             <input type="number" id="form-qty" placeholder="数量" step="any">
             <input type="number" id="form-cost" placeholder="取得単価">
-            <input type="number" id="form-price" placeholder="現在値(自動非対応用)">
+            <input type="number" id="form-price" placeholder="現在値">
             <button class="btn" onclick="addTestData()">銘柄を追加</button>
             
             <div style="border-left:1px solid var(--border-color); padding-left:10px; display:flex; gap:5px; align-items:center;">
@@ -268,7 +268,7 @@
     let holdings = [];
     let historySnapshots = []; 
     let fetchedPrices = {}; 
-    let usdJpyRate = 160.0; // デフォルト為替
+    let usdJpyRate = 160.0; 
 
     let currentFilter = null; 
     let currentSort = { key: 'eval', asc: false };
@@ -286,7 +286,6 @@
         renderDashboard();
     };
 
-    // 1. ブラウザ側からの為替・金ライブレート取得
     async function fetchLiveRates() {
         try {
             const resUsd = await fetch('https://open.er-api.com/v6/latest/USD');
@@ -304,16 +303,11 @@
         } catch(e) { console.error("レート取得エラー", e); }
     }
 
-    // 2. GitHub Actions が生成した prices.json のステートレス読み込み
     async function loadGitHubPrices() {
         try {
-            // キャッシュ破棄のためにクエリパラメータを付与してフェッチ
             const res = await fetch(`prices.json?t=${Date.now()}`);
-            if (res.ok) {
-                fetchedPrices = await res.json();
-                console.log("GitHubから最新の自動更新株価をロードしました", fetchedPrices);
-            }
-        } catch(e) { console.error("GitHub株価のロード失敗。手動入力値を使用します", e); }
+            if (res.ok) { fetchedPrices = await res.json(); }
+        } catch(e) { console.error("GitHub株価のロード失敗", e); }
     }
 
     function loadHoldingsAndHistory() {
@@ -325,10 +319,10 @@
         }
 
         const savedHistory = localStorage.getItem('my_portfolio_history_snapshots');
-        if (savedHistory) {
+        if (savedHistory && savedHistory !== '[]') {
             historySnapshots = JSON.parse(savedHistory);
         } else {
-            generateDummyHistory(); // 初期状態を寂しくさせないための自動ダミー履歴
+            generateDummyHistory(); 
         }
     }
 
@@ -353,12 +347,16 @@
         localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings));
     }
 
+    // 【修正】期間切り替えを体験できるよう、丸3年分（2023年〜2026年）の時系列データに拡張
     function generateDummyHistory() {
         historySnapshots = [];
         const baseDates = [
-            '2025-06-30','2025-08-31','2025-10-31','2025-12-31','2026-02-28','2026-04-30','2026-06-23'
+            '2023-06-30','2023-09-30','2023-12-31',
+            '2024-03-31','2024-06-30','2024-09-30','2024-12-31',
+            '2025-03-31','2025-06-30','2025-09-30','2025-12-31',
+            '2026-03-31','2026-06-23'
         ];
-        let multiplier = 0.7;
+        let multiplier = 0.45;
         baseDates.forEach(d => {
             historySnapshots.push({
                 date: d,
@@ -368,7 +366,7 @@
                 'gold':     Math.round(1848000 * multiplier),
                 'crypto':   Math.round(1772000 * multiplier)
             });
-            multiplier += 0.05;
+            multiplier += 0.05; // 過去から現在にかけて右肩上がりにシミュレート
         });
         localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots));
     }
@@ -377,10 +375,8 @@
         const name = document.getElementById('form-name').value;
         if(!name) return alert('銘柄名を入力してください');
         const newItem = {
-            id: Date.now(),
-            cat: document.getElementById('form-cat').value,
-            symbol: document.getElementById('form-symbol').value.trim(),
-            name: name,
+            id: Date.now(), cat: document.getElementById('form-cat').value,
+            symbol: document.getElementById('form-symbol').value.trim(), name: name,
             broker: document.getElementById('form-broker').value || '不明',
             qty: parseFloat(document.getElementById('form-qty').value) || 0,
             cost: parseFloat(document.getElementById('form-cost').value) || 0,
@@ -391,31 +387,21 @@
         renderDashboard();
     }
 
-    // スナップショット履歴の個別保存
     function saveSnapshot() {
         const dateStr = document.getElementById('history-date').value;
         if(!dateStr) return alert('日付を指定してください');
-
-        // 現在のダッシュボード集計値を取得して保存
         const totals = calculateCurrentTotals();
         const existingIdx = historySnapshots.findIndex(s => s.date === dateStr);
-        
         const snap = {
-            date: dateStr,
-            'jp-stock': totals['jp-stock'],
-            'us-stock': totals['us-stock'],
-            'fund':     totals['fund'],
-            'gold':     totals['gold'],
-            'crypto':   totals['crypto']
+            date: dateStr, 'jp-stock': totals['jp-stock'], 'us-stock': totals['us-stock'],
+            'fund': totals['fund'], 'gold': totals['gold'], 'crypto': totals['crypto']
         };
-
         if(existingIdx >= 0) { historySnapshots[existingIdx] = snap; }
         else { historySnapshots.push(snap); }
-
         historySnapshots.sort((a,b) => a.date.localeCompare(b.date));
         localStorage.setItem('my_portfolio_history_snapshots', JSON.stringify(historySnapshots));
         renderDashboard();
-        alert(`${dateStr} 時点の資産スナップショットを記録しました。`);
+        alert(`${dateStr} 時点の資産を記録しました。`);
     }
 
     function calculateCurrentTotals() {
@@ -423,16 +409,14 @@
         holdings.forEach(h => {
             let price = h.price;
             let rate = (h.cat === 'us-stock') ? usdJpyRate : 1.0;
-            if (h.symbol && fetchedPrices[h.symbol]) {
-                price = fetchedPrices[h.symbol].price;
-            }
+            if (h.symbol && fetchedPrices[h.symbol]) { price = fetchedPrices[h.symbol].price; }
             totals[h.cat] += h.qty * price * rate;
         });
         return totals;
     }
 
     function clearAllData() {
-        if(confirm('完全にリセットして初期サンプル状態（15銘柄＋デモ履歴）に戻しますか？')) {
+        if(confirm('完全にリセットして初期サンプル状態に戻しますか？')) {
             localStorage.removeItem('my_portfolio_holdings');
             localStorage.removeItem('my_portfolio_history_snapshots');
             loadHoldingsAndHistory();
@@ -468,14 +452,12 @@
         document.getElementById(`range-${range}`).classList.add('active');
         renderDashboard();
     }
-    document.addEventListener('DOMContentLoaded', () => {
-        window.setTrendUnit = function(unit) {
-            trendUnit = unit;
-            document.querySelectorAll('[id^="unit-"]').forEach(b => b.classList.remove('active'));
-            document.getElementById(`unit-${unit}`).classList.add('active');
-            renderDashboard();
-        }
-    });
+    function setTrendUnit(unit) {
+        trendUnit = unit;
+        document.querySelectorAll('[id^="unit-"]').forEach(b => b.classList.remove('active'));
+        document.getElementById(`unit-${unit}`).classList.add('active');
+        renderDashboard();
+    }
 
     function getGradatedColor(cat, index, total) {
         const baseColor = catConfig[cat].color;
@@ -490,27 +472,19 @@
         let totalVal = 0;
         const catTotals = { 'jp-stock': { val: 0, cost: 0 }, 'us-stock': { val: 0, cost: 0 }, 'fund': { val: 0, cost: 0 }, 'gold': { val: 0, cost: 0 }, 'crypto': { val: 0, cost: 0 } };
 
-        // 1. 各データの融合・マージ処理
         let processedHoldings = holdings.map(h => {
-            let price = h.price;
-            let prevPrice = h.price;
-            let monthPrice = h.price;
+            let price = h.price; let prevPrice = h.price; let monthPrice = h.price;
             let rate = (h.cat === 'us-stock') ? usdJpyRate : 1.0;
 
-            // GitHub Actions の取得結果を優先的にマージ
             if (h.symbol && fetchedPrices[h.symbol]) {
                 const pObj = fetchedPrices[h.symbol];
-                price = pObj.price;
-                prevPrice = pObj.prev;
-                monthPrice = pObj.month;
+                price = pObj.price; prevPrice = pObj.prev; monthPrice = pObj.month;
             }
 
             const evalVal = h.qty * price * rate;
             const costVal = h.qty * h.cost * rate;
             const profit = evalVal - costVal;
             const profitPct = costVal > 0 ? (profit / costVal) * 100 : 0;
-
-            // 前日比・前月比の変動率算出
             const dayChangePct = prevPrice > 0 ? ((price - prevPrice) / prevPrice) * 100 : 0;
             const monthChangePct = monthPrice > 0 ? ((price - monthPrice) / monthPrice) * 100 : 0;
 
@@ -546,7 +520,6 @@
             `;
         });
 
-        // ソート適用
         processedHoldings.sort((a, b) => {
             let valA = a[currentSort.key]; let valB = b[currentSort.key];
             if (currentSort.key === 'eval') { valA = a.evalVal; valB = b.evalVal; }
@@ -555,7 +528,6 @@
             return currentSort.asc ? valA - valB : valB - valA;
         });
 
-        // フィルタ処理
         let displayedHoldings = [...processedHoldings];
         if (currentFilter) {
             displayedHoldings = processedHoldings.filter(h => h.cat === currentFilter);
@@ -563,14 +535,15 @@
             document.getElementById('chart-title').innerText = `アセットアロケーション (${catConfig[currentFilter].name})`;
             document.getElementById('chart-center-label').innerText = `${catConfig[currentFilter].name} 合計`;
             document.getElementById('chart-center-val').innerText = '¥' + Math.round(catTotals[currentFilter].val).toLocaleString();
+            document.getElementById('trend-title').innerText = `資産推移 (${catConfig[currentFilter].name})`;
         } else {
             document.getElementById('detail-title').innerText = "銘柄明細 (全表示)";
             document.getElementById('chart-title').innerText = "アセットアロケーション";
             document.getElementById('chart-center-label').innerText = "評価額合計";
             document.getElementById('chart-center-val').innerText = '¥' + Math.round(totalVal).toLocaleString();
+            document.getElementById('trend-title').innerText = "資産推移";
         }
 
-        // ドーナツデータの構築
         const chartLabels = []; const chartData = []; const chartColors = [];
         if (currentFilter) {
             displayedHoldings.forEach((h, idx) => {
@@ -585,19 +558,14 @@
         }
         renderDonut(chartLabels, chartData, chartColors);
 
-        // 明細一覧テーブル生成
         const detailBody = document.getElementById('detail-body');
         detailBody.innerHTML = '';
         displayedHoldings.forEach(h => {
             let trendColor = 'inherit';
             if (h.profit > 0) trendColor = 'var(--trend-plus)';
             if (h.profit < 0) trendColor = 'var(--trend-minus)';
-
-            // 前日・前月のテキスト配色設定
             const dColor = h.dayChangePct > 0 ? 'var(--trend-plus)' : (h.dayChangePct < 0 ? 'var(--trend-minus)' : 'var(--trend-flat)');
             const mColor = h.monthChangePct > 0 ? 'var(--trend-plus)' : (h.monthChangePct < 0 ? 'var(--trend-minus)' : 'var(--trend-flat)');
-
-            // 国際/国内株の通貨マーク識別
             const unitLabel = h.cat === 'us-stock' ? `$${h.price.toFixed(1)}` : `¥${Math.round(h.price).toLocaleString()}`;
             const costLabel = h.cat === 'us-stock' ? `$${h.cost}` : `¥${h.cost.toLocaleString()}`;
 
@@ -618,7 +586,7 @@
         });
 
         renderRankings(displayedHoldings);
-        renderTrendChart();
+        renderTrendChart(); // 資産推移グラフの再描画
     }
 
     function renderDonut(labels, data, colors) {
@@ -644,16 +612,16 @@
         if(worst.length === 0) worstEl.innerHTML = '<div style="color:var(--text-sub); font-size:12px;">データなし</div>';
     }
 
-    // 資産推移グラフの組み立て（期間フィルタ・単位切り替え対応）
+    // 【修正版】期間フィルタ・間引き防止・カテゴリドリルダウン連動を組み込んだ推移グラフ
     function renderTrendChart() {
         const ctx = document.getElementById('trendChart').getContext('2d');
         if (trendChart) trendChart.destroy();
 
-        if (historySnapshots.length === 0) { return; }
+        if (historySnapshots.length === 0) return;
 
         let filteredSnaps = [...historySnapshots];
 
-        // 期間フィルタの適用
+        // 1. 期間フィルタの適用
         const now = new Date();
         if (trendRange === '1y') {
             const oneYearAgo = new Date(); oneYearAgo.setFullYear(now.getFullYear() - 1);
@@ -663,61 +631,63 @@
             filteredSnaps = filteredSnaps.filter(s => new Date(s.date) >= threeYearsAgo);
         }
 
-        // 月次・年次の間引き（集約化）
+        // 2. 月次・年次の集約
         let displaySnaps = [];
         if (trendUnit === 'yearly') {
             const years = {};
-            filteredSnaps.forEach(s => {
-                const y = s.date.substring(0, 4);
-                years[y] = s; // 各年の最後のデータを採用
-            });
+            filteredSnaps.forEach(s => { const y = s.date.substring(0, 4); years[y] = s; });
             displaySnaps = Object.values(years);
         } else {
             const months = {};
-            filteredSnaps.forEach(s => {
-                const m = s.date.substring(0, 7);
-                months[m] = s; // 各月の最後のデータを採用
-            });
+            filteredSnaps.forEach(s => { const m = s.date.substring(0, 7); months[m] = s; });
             displaySnaps = Object.values(months);
         }
 
         const labels = displaySnaps.map(s => trendUnit === 'yearly' ? s.date.substring(0, 4) + '年' : s.date.substring(0, 7));
         
+        // 3. 全カテゴリのデータセット定義
+        const allDatasets = [
+            { id: 'jp-stock', label: '国内株', data: displaySnaps.map(s => s['jp-stock'] || 0), backgroundColor: catConfig['jp-stock'].color },
+            { id: 'us-stock', label: '米国株', data: displaySnaps.map(s => s['us-stock'] || 0), backgroundColor: catConfig['us-stock'].color },
+            { id: 'fund', label: '投資信託', data: displaySnaps.map(s => s['fund'] || 0), backgroundColor: catConfig['fund'].color },
+            { id: 'gold', label: '金', data: displaySnaps.map(s => s['gold'] || 0), backgroundColor: catConfig['gold'].color },
+            { id: 'crypto', label: '暗号資産', data: displaySnaps.map(s => s['crypto'] || 0), backgroundColor: catConfig['crypto'].color }
+        ];
+
+        // 【新機能】カテゴリがドリルダウン選択されていれば、グラフのデータセットもその1つだけに自動絞り込み
+        let activeDatasets = allDatasets;
+        if (currentFilter) {
+            activeDatasets = allDatasets.filter(ds => ds.id === currentFilter);
+        }
+
         trendChart = new Chart(ctx, {
             type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: '国内株', data: displaySnaps.map(s => s['jp-stock'] || 0), backgroundColor: catConfig['jp-stock'].color },
-                    { label: '米国株', data: displaySnaps.map(s => s['us-stock'] || 0), backgroundColor: catConfig['us-stock'].color },
-                    { label: '投資信託', data: displaySnaps.map(s => s['fund'] || 0), backgroundColor: catConfig['fund'].color },
-                    { label: '金', data: displaySnaps.map(s => s['gold'] || 0), backgroundColor: catConfig['gold'].color },
-                    { label: '暗号資産', data: displaySnaps.map(s => s['crypto'] || 0), backgroundColor: catConfig['crypto'].color }
-                ]
-            },
+            data: { labels: labels, datasets: activeDatasets },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 scales: {
-                    x: { stacked: true, grid: { display: false } },
+                    x: { 
+                        stacked: true, 
+                        grid: { display: false },
+                        ticks: { autoSkip: false } // 【修正】月次ラベルが2ヶ月ごとに間引かれるのを防止
+                    },
                     y: { stacked: true, ticks: { callback: v => '¥' + (v / 10000).toLocaleString() + '万' } }
                 },
-                plugins: { legend: { display: false } } // サマリーテーブルと色が完全連動しているため凡例はカット
+                plugins: { legend: { display: false } }
             }
         });
     }
 
-    // バックアップ機能
     function exportAll() {
         const obj = { holdings, history: historySnapshots };
         const code = btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
-        document.getElementById('backupText').value = code;
-        document.getElementById('backupText').select();
+        document.getElementById('backupText').value = code; document.getElementById('backupText').select();
         alert('全てのデータコードを生成しました！');
     }
     function importAll() {
         const code = document.getElementById('backupText').value.trim();
         if(!code) return alert('コードを貼り付けてください');
-        if(confirm('現在のデータ（履歴含む）がすべて上書きされますがよろしいですか？')) {
+        if(confirm('現在のデータがすべて上書きされますがよろしいですか？')) {
             try {
                 const obj = JSON.parse(decodeURIComponent(escape(atob(code))));
                 if(obj.holdings) { holdings = obj.holdings; localStorage.setItem('my_portfolio_holdings', JSON.stringify(holdings)); }
